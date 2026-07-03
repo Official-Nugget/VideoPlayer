@@ -39,6 +39,7 @@
     "a[data-nav]",
     ".logo",
     "#searchInput",
+    "#playerFrame",
     ".card",
     ".episode",
     ".btn",
@@ -245,6 +246,31 @@
     return items[0] || null;
   }
 
+  // Focus the video iframe so the remote's keys are delivered to the streaming
+  // player itself (its own play/pause/seek/mute shortcuts). We can't script a
+  // cross-origin player, but we CAN route the remote into it.
+  let playerHintShown = false;
+  function enterPlayerFrame() {
+    const frame = $("#playerFrame");
+    if (!frame) return;
+    const grab = () => {
+      try {
+        frame.focus();
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    setTimeout(grab, 300);
+    frame.addEventListener("load", grab, { once: true });
+    if (!playerHintShown && window.UI && UI.notice) {
+      playerHintShown = true;
+      UI.notice(
+        "Use the remote to control the video. Press Back for options (source, episodes), Back again to exit.",
+        false
+      );
+    }
+  }
+
   function focusScopeStart() {
     const scope = activeScope();
     // Prefer the hero Play button on the home screen.
@@ -254,9 +280,12 @@
         focusEl(heroPlay);
         return;
       }
+    } else if (scope === $("#player")) {
+      // Hand control straight to the video player.
+      enterPlayerFrame();
+      return;
     } else {
-      // In the player, land on Back so the remote's OK doesn't hit the iframe.
-      const back = scope.querySelector(".player__back, .modal__close, .trailer__close");
+      const back = scope.querySelector(".modal__close, .trailer__close");
       if (back && isVisible(back)) {
         focusEl(back);
         return;
@@ -313,6 +342,15 @@
       return true;
     }
     if (player && !player.hidden) {
+      const frame = $("#playerFrame");
+      // If the remote is currently "inside" the video, first Back returns to
+      // the toolbar (source/episodes/exit); it does NOT quit the video.
+      if (frame && document.activeElement === frame) {
+        const back = $("#playerBack");
+        if (back) focusEl(back);
+        return true;
+      }
+      // Already on the toolbar — Back closes the player.
       const b = $("#playerBack");
       if (b) b.click();
       return true;
