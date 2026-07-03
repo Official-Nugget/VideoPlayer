@@ -20,14 +20,15 @@
       /* ignore */
     }
     const ua = navigator.userAgent || "";
-    if (/AFT|Android TV|GoogleTV|SMART-TV|SmartTV|BRAVIA|Web0S|Tizen|Silk/i.test(ua))
-      return true;
     if (
-      window.Capacitor &&
-      typeof window.Capacitor.getPlatform === "function" &&
-      window.Capacitor.getPlatform() !== "web"
+      /AFT|Android TV|GoogleTV|SMART-TV|SmartTV|BRAVIA|Web0S|Tizen|Silk|CrKey|NetCast|HbbTV|AppleTV/i.test(
+        ua
+      )
     )
       return true;
+    // Any Capacitor native container is our packaged (TV/mobile) app — the web
+    // build served over the internet has no window.Capacitor.
+    if (window.Capacitor) return true;
     return false;
   }
 
@@ -96,6 +97,15 @@
     return { x: r.left + r.width / 2, y: r.top + r.height / 2, r };
   }
 
+  // Show the player toolbar only when a toolbar control is focused; otherwise
+  // (i.e. when the video itself is focused) keep it hidden for full-screen.
+  function updatePlayerChrome(target) {
+    const player = $("#player");
+    if (!player || player.hidden) return;
+    const onBar = !!(target && target.closest && target.closest(".player__bar"));
+    player.classList.toggle("tv-bar-hidden", !onBar);
+  }
+
   function focusEl(el) {
     if (!el) return;
     try {
@@ -109,6 +119,7 @@
     } catch (e) {
       el.scrollIntoView();
     }
+    updatePlayerChrome(el);
   }
 
   function move(dir) {
@@ -186,8 +197,19 @@
     Up: "up",
     Down: "down",
   };
-  // Fallback by numeric key code (some TV remotes don't set a proper e.key).
-  const ARROW_CODES = { 37: "left", 38: "up", 39: "right", 40: "down" };
+  // Fallback by numeric key code. Includes BOTH standard DOM arrow codes
+  // (37-40) AND raw Android D-pad codes (19-22) that some Fire TV / Android TV
+  // WebViews deliver instead of translating them.
+  const ARROW_CODES = {
+    37: "left",
+    38: "up",
+    39: "right",
+    40: "down",
+    21: "left", // KEYCODE_DPAD_LEFT
+    22: "right", // KEYCODE_DPAD_RIGHT
+    19: "up", // KEYCODE_DPAD_UP
+    20: "down", // KEYCODE_DPAD_DOWN
+  };
   const ENTER_CODES = { 13: 1, 23: 1, 66: 1 }; // Enter, DPAD_CENTER, KEYCODE_ENTER
 
   function directionOf(e) {
@@ -253,12 +275,15 @@
   function enterPlayerFrame() {
     const frame = $("#playerFrame");
     if (!frame) return;
+    const player = $("#player");
+    if (player) player.classList.add("tv-bar-hidden"); // fullscreen video
     const grab = () => {
       try {
         frame.focus();
       } catch (e) {
         /* ignore */
       }
+      if (player) player.classList.add("tv-bar-hidden");
     };
     setTimeout(grab, 300);
     frame.addEventListener("load", grab, { once: true });

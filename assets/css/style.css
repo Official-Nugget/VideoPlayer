@@ -1199,7 +1199,8 @@ input:focus-visible {
   display: none !important;
 }
 /* Player: give the video the whole screen and float the toolbar on top so it
-   only shows when you press Back to reveal the options. */
+   only appears when you press Back to reveal the options (source, episodes,
+   exit). By default it's slid out of view for a clean full-screen video. */
 .tv-mode .player__bar {
   position: absolute;
   top: 0;
@@ -1207,11 +1208,14 @@ input:focus-visible {
   right: 0;
   z-index: 6;
   height: 64px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+  transition: transform 0.2s ease;
+}
+.tv-mode .player.tv-bar-hidden .player__bar {
+  transform: translateY(-100%);
 }
 .tv-mode #playerFrame:focus {
-  outline: 2px solid rgba(255, 159, 28, 0.45);
-  outline-offset: -2px;
+  outline: none;
 }
 /* Nav + header links get a filled pill when focused. */
 .tv-mode .nav a:focus,
