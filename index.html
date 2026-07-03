@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Club Sandwich Streaming — Watch Movies & TV</title>
+    <meta
+      name="description"
+      content="Club Sandwich Streaming — watch movies and TV shows. Powered by TMDB & VidLink."
+    />
+    <meta name="theme-color" content="#14110b" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://image.tmdb.org" />
+    <link rel="preconnect" href="https://api.themoviedb.org" />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body>
+    <!-- ===================== CUSTOM TITLE BAR (Electron only) ===================== -->
+    <div class="titlebar" id="titlebar" hidden>
+      <div class="titlebar__brand">
+        <img
+          class="titlebar__icon"
+          src="assets/icons/icon-192.png"
+          alt=""
+          aria-hidden="true"
+        />
+        <span class="titlebar__title">Club Sandwich Streaming</span>
+      </div>
+      <div class="titlebar__controls">
+        <button class="titlebar__btn" id="winMin" aria-label="Minimize">
+          <svg viewBox="0 0 12 12"><rect x="2" y="5.5" width="8" height="1" /></svg>
+        </button>
+        <button class="titlebar__btn" id="winMax" aria-label="Maximize">
+          <svg viewBox="0 0 12 12">
+            <rect
+              x="2.5"
+              y="2.5"
+              width="7"
+              height="7"
+              fill="none"
+              stroke="currentColor"
+            />
+          </svg>
+        </button>
+        <button
+          class="titlebar__btn titlebar__btn--close"
+          id="winClose"
+          aria-label="Close"
+        >
+          <svg viewBox="0 0 12 12">
+            <path
+              d="M3 3l6 6M9 3l-6 6"
+              stroke="currentColor"
+              stroke-width="1.2"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===================== HEADER ===================== -->
+    <header class="header" id="header">
+      <div class="header__left">
+        <a href="#" class="logo" data-nav="home">
+          CLUB <span>SANDWICH</span>
+        </a>
+        <nav class="nav">
+          <a href="#" data-nav="home" class="active">Home</a>
+          <a href="#" data-nav="movie">Movies</a>
+          <a href="#" data-nav="tv">TV Shows</a>
+          <a href="#" data-nav="browse">Browse</a>
+          <a href="#" data-nav="mylist">My List</a>
+        </nav>
+      </div>
+      <div class="header__right">
+        <form class="search" id="searchForm" role="search">
+          <svg viewBox="0 0 24 24" class="search__icon" aria-hidden="true">
+            <path
+              d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
+            />
+          </svg>
+          <input
+            type="search"
+            id="searchInput"
+            placeholder="Search movies, TV shows..."
+            autocomplete="off"
+          />
+        </form>
+      </div>
+    </header>
+
+    <!-- ===================== SCROLLABLE VIEWPORT ===================== -->
+    <div class="viewport" id="viewport">
+    <!-- ===================== HERO ===================== -->
+    <section class="hero" id="hero" hidden>
+      <div class="hero__backdrop" id="heroBackdrop"></div>
+      <div class="hero__fade"></div>
+      <div class="hero__content">
+        <h1 class="hero__title" id="heroTitle"></h1>
+        <div class="hero__meta" id="heroMeta"></div>
+        <p class="hero__overview" id="heroOverview"></p>
+        <div class="hero__actions">
+          <button class="btn btn--play" id="heroPlay">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            Play
+          </button>
+          <button class="btn btn--info" id="heroInfo">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"
+              />
+            </svg>
+            More Info
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ROWS ===================== -->
+    <main class="rows" id="rows"></main>
+
+    <!-- Search results grid -->
+    <section class="grid-view" id="gridView" hidden>
+      <h2 class="grid-view__title" id="gridTitle"></h2>
+      <div class="filters" id="filters">
+        <div class="filter">
+          <label for="fType">Type</label>
+          <select id="fType" class="select select--sm">
+            <option value="all">All</option>
+            <option value="movie">Movies</option>
+            <option value="tv">TV Shows</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="fGenre">Genre</label>
+          <select id="fGenre" class="select select--sm">
+            <option value="">Any</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="fYear">Year</label>
+          <select id="fYear" class="select select--sm">
+            <option value="">Any</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="fRating">Min rating</label>
+          <select id="fRating" class="select select--sm">
+            <option value="">Any</option>
+            <option value="9">9+</option>
+            <option value="8">8+</option>
+            <option value="7">7+</option>
+            <option value="6">6+</option>
+            <option value="5">5+</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="fSort">Sort by</label>
+          <select id="fSort" class="select select--sm">
+            <option value="popularity.desc">Most popular</option>
+            <option value="vote_average.desc">Top rated</option>
+            <option value="primary_release_date.desc">Newest</option>
+            <option value="revenue.desc">Highest grossing</option>
+          </select>
+        </div>
+        <button class="filter__reset" id="fReset">Reset</button>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+    </div>
+    <!-- /viewport -->
+
+    <!-- ===================== DETAIL MODAL ===================== -->
+    <div class="modal" id="modal" hidden>
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true">
+        <button class="modal__close" data-close aria-label="Close">&times;</button>
+        <div class="modal__body" id="modalBody"></div>
+      </div>
+    </div>
+
+    <!-- ===================== PLAYER OVERLAY ===================== -->
+    <div class="player" id="player" hidden>
+      <div class="player__bar">
+        <button class="player__back" id="playerBack" aria-label="Back">
+          &larr; Back
+        </button>
+        <button class="player__navbtn" id="playerPrev" title="Previous episode" hidden>
+          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
+          Prev
+        </button>
+        <button class="player__navbtn" id="playerNext" title="Next episode" hidden>
+          Next
+          <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z" /></svg>
+        </button>
+        <span class="player__title" id="playerTitle"></span>
+        <div class="player__spacer"></div>
+        <div class="player__source">
+          <label for="sourceSelect">Source</label>
+          <select id="sourceSelect" class="select select--sm"></select>
+        </div>
+        <div class="player__settings-wrap">
+          <button
+            class="player__iconbtn"
+            id="playerSettings"
+            aria-label="Playback settings"
+            title="Playback settings"
+          >
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7zm7.4-2.5a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.3 7.3 0 0 0-1.7 1l-2.4-1-2 3.4L5.5 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1l.4 2.5h4l.4-2.5c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6z"
+              />
+            </svg>
+          </button>
+          <div class="settings-pop" id="settingsPop" hidden>
+            <h4>Playback</h4>
+            <label class="switch">
+              <input type="checkbox" id="setAutoplay" /> <span>Autoplay</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setResume" />
+              <span>Resume where I left off</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setRemember" />
+              <span>Remember source choice</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="setAutoNext" />
+              <span>Auto-play next episode</span>
+            </label>
+            <p class="settings-pop__note">
+              Changes apply when you switch source or reopen a video.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="player__frame">
+        <iframe
+          id="playerFrame"
+          allowfullscreen
+          allow="autoplay; encrypted-media; picture-in-picture"
+          referrerpolicy="origin"
+        ></iframe>
+      </div>
+    </div>
+
+    <!-- ===================== TRAILER OVERLAY ===================== -->
+    <div class="trailer" id="trailer" hidden>
+      <div class="trailer__backdrop" data-trailer-close></div>
+      <div class="trailer__box">
+        <button class="trailer__close" data-trailer-close aria-label="Close">
+          &times;
+        </button>
+        <div class="trailer__frame">
+          <iframe
+            id="trailerFrame"
+            allowfullscreen
+            allow="autoplay; encrypted-media; picture-in-picture"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== TOAST / SETUP NOTICE ===================== -->
+    <div class="notice" id="notice" hidden></div>
+
+    <!--
+    <footer class="footer">
+      <p>
+        Club Sandwich Streaming is a demo UI. Metadata by
+        <a href="https://www.themoviedb.org/" target="_blank" rel="noopener"
+          >TMDB</a
+        >, streams by
+        <a href="https://vidlink.pro/" target="_blank" rel="noopener"
+          >VidLink</a
+        >. This product uses the TMDB API but is not endorsed or certified by
+        TMDB.
+      </p>
+    </footer>
+    -->
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/tmdb.js"></script>
+    <script src="assets/js/player.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+      // Register the PWA service worker (only when served over http/https).
+      if (
+        "serviceWorker" in navigator &&
+        location.protocol.startsWith("http")
+      ) {
+        window.addEventListener("load", () =>
+          navigator.serviceWorker.register("sw.js").catch(() => {})
+        );
+      }
+    </script>
+  </body>
+</html>
