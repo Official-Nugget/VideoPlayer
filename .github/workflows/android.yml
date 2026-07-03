@@ -64,8 +64,12 @@ jobs:
 
       - name: Attach APK to release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist-apk/Club-Sandwich-Streaming-firetv.apk
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Create the release if it doesn't exist yet (the Windows/Mac workflow
+          # may create it too — ignore the error if it's already there), then
+          # upload the APK, overwriting any previous copy.
+          gh release create "$TAG" --title "$TAG" --notes "Club Sandwich Streaming $TAG" || true
+          gh release upload "$TAG" dist-apk/Club-Sandwich-Streaming-firetv.apk --clobber
