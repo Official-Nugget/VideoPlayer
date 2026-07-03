@@ -1,0 +1,9 @@
+{
+  "appId": "dev.clubsandwich.streaming",
+  "appName": "Club Sandwich Streaming",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#14110bff"
+  }
+}

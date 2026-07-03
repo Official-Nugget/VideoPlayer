@@ -39,6 +39,7 @@ const UI = (() => {
     el.className = "card";
     el.dataset.id = n.id;
     el.dataset.media = n.media;
+    el.tabIndex = 0; // focusable for TV / D-pad remote navigation
 
     const posterUrl = TMDB.img(n.poster, CONFIG.POSTER_SIZE);
     const imgHtml = posterUrl

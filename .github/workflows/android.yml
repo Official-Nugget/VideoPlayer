@@ -1,0 +1,71 @@
+name: Build Android (Fire TV) APK
+
+# Builds a sideloadable APK for Fire TV / Android TV on a cloud Linux runner
+# (no Android tools needed on your PC). Runs on a version tag push (v*) or
+# manually from the Actions tab. The APK is uploaded as a downloadable artifact
+# and, for tag builds, attached to the matching GitHub Release.
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    name: Build APK
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Stage web assets and sync Capacitor
+        run: |
+          npm run build:web
+          npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist-apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "dist-apk/Club-Sandwich-Streaming-firetv.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: club-sandwich-firetv-apk
+          path: dist-apk/Club-Sandwich-Streaming-firetv.apk
+
+      - name: Attach APK to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-apk/Club-Sandwich-Streaming-firetv.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

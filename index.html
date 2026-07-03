@@ -310,13 +310,16 @@
     <script src="assets/js/player.js"></script>
     <script src="assets/js/ui.js"></script>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/tv.js"></script>
     <script>
       // Register the PWA service worker (browsers only; skip in the desktop
-      // app, which serves over http://127.0.0.1 but needs no offline cache).
+      // Electron app and the Capacitor/Fire TV app, which serve locally and
+      // need no offline cache — and where a stale SW cache causes confusion).
       if (
         "serviceWorker" in navigator &&
         location.protocol.startsWith("http") &&
-        !(window.desktop && window.desktop.isElectron)
+        !(window.desktop && window.desktop.isElectron) &&
+        !window.Capacitor
       ) {
         window.addEventListener("load", () =>
           navigator.serviceWorker.register("sw.js").catch(() => {})

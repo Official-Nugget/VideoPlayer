@@ -1155,6 +1155,58 @@ input:focus-visible {
   border-radius: 4px;
 }
 
+/* ===================== TV / D-PAD (10-foot) FOCUS ===================== */
+/* Strong, unmistakable focus ring so you always know where you are with a
+   remote. Applies only when tv.js has added .tv-mode to <html>. */
+.tv-mode :focus {
+  outline: none;
+}
+.tv-mode a:focus,
+.tv-mode button:focus,
+.tv-mode select:focus,
+.tv-mode input:focus,
+.tv-mode .switch input:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+/* Cards: pop forward and glow when focused, mirroring the mouse hover state
+   (including revealing the title overlay). */
+.tv-mode .card:focus {
+  outline: none;
+  transform: scale(1.12);
+  z-index: 5;
+  box-shadow: 0 0 0 4px var(--accent), 0 16px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+}
+.tv-mode .card:focus .card__overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Nav + header links get a filled pill when focused. */
+.tv-mode .nav a:focus,
+.tv-mode .logo:focus {
+  background: rgba(255, 159, 28, 0.18);
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+/* Player / modal / trailer controls. */
+.tv-mode .player__back:focus,
+.tv-mode .player__navbtn:focus,
+.tv-mode .player__iconbtn:focus,
+.tv-mode .modal__close:focus,
+.tv-mode .trailer__close:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  background: rgba(255, 159, 28, 0.2);
+}
+/* On a TV, the mouse cursor is meaningless — hide it. */
+.tv-mode,
+.tv-mode * {
+  cursor: none !important;
+}
+
 /* Nicer % match tag + play button glow */
 .modal__meta .tag-green {
   color: #ffd27a;
