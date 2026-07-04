@@ -100,6 +100,10 @@
             <span class="account__name" id="accountName"></span>
             <span class="account__email" id="accountEmail"></span>
           </div>
+          <button class="account__switch" id="accountSwitch" hidden>
+            <span>Watching as <b id="accountProfileName"></b></span>
+            <span class="account__switch-cta">Switch</span>
+          </button>
           <div class="account__username">
             <label for="accountUsernameInput">Username</label>
             <div class="account__username-row">
@@ -257,6 +261,41 @@
         <p class="auth__reset">
           <a href="#" id="authReset">Forgot password?</a>
         </p>
+      </div>
+    </div>
+
+    <!-- ===================== PROFILE PICKER ===================== -->
+    <div class="profiles" id="profilesOverlay" hidden>
+      <button class="profiles__close" id="profilesClose" hidden aria-label="Close">
+        &times;
+      </button>
+      <div class="profiles__inner">
+        <div class="profiles__brand">CLUB <span>SANDWICH</span></div>
+        <h1 class="profiles__title">Who's watching?</h1>
+        <div class="profiles__grid" id="profilesGrid"></div>
+        <button class="profiles__manage" id="profilesManage">Manage Profiles</button>
+      </div>
+    </div>
+
+    <!-- ===================== PROFILE EDITOR ===================== -->
+    <div class="pedit" id="profileEdit" hidden>
+      <div class="pedit__backdrop" data-pedit-close></div>
+      <div class="pedit__dialog" role="dialog" aria-modal="true" aria-labelledby="profileEditTitle">
+        <button class="pedit__close" data-pedit-close aria-label="Close">&times;</button>
+        <h2 class="pedit__title" id="profileEditTitle">Add profile</h2>
+        <label class="pedit__field">
+          <span>Profile name</span>
+          <input type="text" id="profileEditName" maxlength="20" placeholder="e.g. Isaiah" />
+        </label>
+        <div class="pedit__field">
+          <span>Avatar color</span>
+          <div class="pedit__swatches" id="profileEditSwatches"></div>
+        </div>
+        <div class="pedit__error" id="profileEditError" hidden></div>
+        <div class="pedit__actions">
+          <button class="pedit__delete" id="profileEditDelete" type="button" hidden>Delete</button>
+          <button class="pedit__save" id="profileEditSave" type="button">Save</button>
+        </div>
       </div>
     </div>
 

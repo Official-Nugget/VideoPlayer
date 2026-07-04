@@ -56,10 +56,18 @@
     ".switch input",
     ".account__btn",
     ".account__signout",
+    ".account__switch",
     ".account__username-row input",
     ".account__username-row button",
     ".account__swatches .swatch",
     ".signin-cta__btn",
+    ".profile-tile",
+    ".profiles__manage",
+    ".profiles__close",
+    ".pedit__field input",
+    ".pedit__swatches .swatch",
+    ".pedit__save",
+    ".pedit__delete",
     ".auth__field input",
     ".auth__switch a",
     ".auth__reset a",
@@ -70,10 +78,14 @@
 
   // The layer the user is currently in — focus stays trapped inside it.
   function activeScope() {
+    const pedit = $("#profileEdit");
+    const picker = $("#profilesOverlay");
     const authModal = $("#authModal");
     const trailer = $("#trailer");
     const player = $("#player");
     const modal = $("#modal");
+    if (pedit && !pedit.hidden) return pedit;
+    if (picker && !picker.hidden) return picker;
     if (authModal && !authModal.hidden) return authModal;
     if (trailer && !trailer.hidden) return trailer;
     if (player && !player.hidden) return player;
@@ -326,6 +338,18 @@
         focusEl(email);
         return;
       }
+    } else if (scope === $("#profileEdit")) {
+      const name = $("#profileEditName");
+      if (name && isVisible(name)) {
+        focusEl(name);
+        return;
+      }
+    } else if (scope === $("#profilesOverlay")) {
+      const first = scope.querySelector(".profile-tile");
+      if (first && isVisible(first)) {
+        focusEl(first);
+        return;
+      }
     } else {
       const back = scope.querySelector(".modal__close, .trailer__close");
       if (back && isVisible(back)) {
@@ -346,7 +370,7 @@
       focusScopeStart();
     }
   });
-  ["#modal", "#player", "#trailer", "#authModal"].forEach((sel) => {
+  ["#modal", "#player", "#trailer", "#authModal", "#profilesOverlay", "#profileEdit"].forEach((sel) => {
     const el = $(sel);
     if (el)
       overlayObserver.observe(el, {
@@ -375,10 +399,23 @@
   // Close the topmost overlay if one is open; otherwise exit the app. Without
   // this, the hardware/remote Back would immediately quit even mid-video.
   function closeTopOverlay() {
+    const pedit = $("#profileEdit");
+    const picker = $("#profilesOverlay");
     const authModal = $("#authModal");
     const trailer = $("#trailer");
     const player = $("#player");
     const modal = $("#modal");
+    if (pedit && !pedit.hidden) {
+      const b = pedit.querySelector("[data-pedit-close]");
+      if (b) b.click();
+      return true;
+    }
+    if (picker && !picker.hidden) {
+      // Only closeable once a profile is active (else you must pick one).
+      const b = $("#profilesClose");
+      if (b && !b.hidden) b.click();
+      return true;
+    }
     if (authModal && !authModal.hidden) {
       const b = authModal.querySelector("[data-auth-close]");
       if (b) b.click();

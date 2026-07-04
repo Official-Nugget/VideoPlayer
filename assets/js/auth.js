@@ -54,6 +54,8 @@ const Account = (() => {
     "linear-gradient(135deg,#64748b,#cbd5e1)",
   ];
   const LS_AVATAR = "csAvatar";
+  const LS_PROFILE = "csProfile"; // remembers the active profile id
+  const MAX_PROFILES = 5;
 
   let auth = null;
   let db = null;
@@ -62,6 +64,9 @@ const Account = (() => {
   let applyingRemote = false; // true while we write cloud data into localStorage
   let lastLocalPush = 0; // updatedAt of our own most recent push (loop guard)
   let pushTimer = null;
+  let profiles = []; // [{ id, name, avatar }]
+  let activeProfileId = null;
+  let manageMode = false; // profile picker is in "manage" (edit) mode
 
   // ---------------- localStorage helpers ----------------
   function readJSON(key, fallback) {
@@ -86,7 +91,8 @@ const Account = (() => {
     const original = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function (key, value) {
       original(key, value);
-      if (user && !applyingRemote && SYNC_KEYS.includes(key)) schedulePush();
+      if (user && activeProfileId && !applyingRemote && SYNC_KEYS.includes(key))
+        schedulePush();
     };
   }
 
@@ -148,7 +154,17 @@ const Account = (() => {
     return out;
   }
 
-  // ---------------- Push (local -> cloud) ----------------
+  // ---------------- Firestore refs ----------------
+  //   users/{uid}                      -> account doc: profile list + activeProfile
+  //   users/{uid}/profiles/{profileId} -> per-profile data (list, progress, etc.)
+  function accountRef() {
+    return db.collection("users").doc(user.uid);
+  }
+  function profileRef(pid) {
+    return accountRef().collection("profiles").doc(pid);
+  }
+
+  // ---------------- Push (local -> a profile's cloud doc) ----------------
   function collectPayload() {
     return {
       myList: readJSON(KEYS.myList, []),
@@ -156,7 +172,6 @@ const Account = (() => {
       settings: readJSON(KEYS.settings, {}),
       source: localStorage.getItem(KEYS.source) || null,
       progress: readJSON(KEYS.progress, {}),
-      avatar: avatarIndex(),
       updatedAt: Date.now(),
     };
   }
@@ -167,81 +182,242 @@ const Account = (() => {
   }
 
   async function pushNow() {
-    if (!user || !db) return;
+    if (!user || !db || !activeProfileId) return;
     const payload = collectPayload();
     lastLocalPush = payload.updatedAt;
     try {
-      await db.collection("users").doc(user.uid).set(payload, { merge: true });
+      await profileRef(activeProfileId).set(payload, { merge: true });
     } catch (e) {
       console.warn("[account] push failed:", e && e.message);
     }
   }
 
-  // ---------------- Apply (cloud -> local) ----------------
-  function applyRemote(data) {
-    if (!data) return;
-    const localList = readJSON(KEYS.myList, []);
-    const localRecent = readJSON(KEYS.recent, []);
-    const localSettings = readJSON(KEYS.settings, {});
-    const localProgress = readJSON(KEYS.progress, {});
-
-    writeJSON(KEYS.myList, unionList(localList, data.myList));
-    writeJSON(KEYS.recent, unionList(localRecent, data.recent).slice(0, 20));
-    writeJSON(KEYS.progress, mergeProgress(localProgress, data.progress));
-    // Local settings win, filling any gaps from the cloud.
-    writeJSON(KEYS.settings, { ...(data.settings || {}), ...localSettings });
-    if (data.source && !localStorage.getItem(KEYS.source)) {
+  // ---------------- Apply (a profile's cloud doc -> local) ----------------
+  // replace=true  -> clean swap (used when switching profiles) so one profile's
+  //                  list never bleeds into another.
+  // replace=false -> union/merge (used on first login and for live updates) so
+  //                  nothing on this device is lost.
+  function applyProfileData(data, opts) {
+    const replace = opts && opts.replace;
+    data = data || {};
+    if (replace) {
+      writeJSON(KEYS.myList, data.myList || []);
+      writeJSON(KEYS.recent, (data.recent || []).slice(0, 20));
+      writeJSON(KEYS.progress, data.progress || {});
+      writeJSON(KEYS.settings, data.settings || {});
       applyingRemote = true;
       try {
-        localStorage.setItem(KEYS.source, data.source);
+        if (data.source) localStorage.setItem(KEYS.source, data.source);
+        else localStorage.removeItem(KEYS.source);
       } finally {
         applyingRemote = false;
       }
-    }
-    if (typeof data.avatar === "number" && !localStorage.getItem(LS_AVATAR)) {
-      applyingRemote = true;
-      try {
-        localStorage.setItem(LS_AVATAR, String(data.avatar));
-      } finally {
-        applyingRemote = false;
+    } else {
+      const localList = readJSON(KEYS.myList, []);
+      const localRecent = readJSON(KEYS.recent, []);
+      const localSettings = readJSON(KEYS.settings, {});
+      const localProgress = readJSON(KEYS.progress, {});
+      writeJSON(KEYS.myList, unionList(localList, data.myList));
+      writeJSON(KEYS.recent, unionList(localRecent, data.recent).slice(0, 20));
+      writeJSON(KEYS.progress, mergeProgress(localProgress, data.progress));
+      writeJSON(KEYS.settings, { ...(data.settings || {}), ...localSettings });
+      if (data.source && !localStorage.getItem(KEYS.source)) {
+        applyingRemote = true;
+        try {
+          localStorage.setItem(KEYS.source, data.source);
+        } finally {
+          applyingRemote = false;
+        }
       }
-      if (user) applyAvatar(user);
     }
     document.dispatchEvent(new CustomEvent("account:datachanged"));
   }
 
-  // One-time reconcile on sign-in: merge whatever the account already has with
-  // this device, save locally, then push the union back up.
-  async function reconcileOnLogin() {
-    if (!user || !db) return;
+  // Live updates for the active profile from other devices.
+  function listenForChanges() {
+    if (!user || !db || !activeProfileId) return;
+    if (unsubscribeDoc) unsubscribeDoc();
+    unsubscribeDoc = profileRef(activeProfileId).onSnapshot(
+      (snap) => {
+        if (!snap.exists || snap.metadata.hasPendingWrites) return;
+        const data = snap.data();
+        if (!data) return;
+        if (data.updatedAt && data.updatedAt <= lastLocalPush) return;
+        applyProfileData(data, { replace: false });
+      },
+      (e) => console.warn("[account] listen failed:", e && e.message)
+    );
+  }
+
+  // ============================================================
+  //  PROFILES  (Netflix-style, under one account)
+  // ============================================================
+  function genId() {
+    return "p_" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
+  }
+  function setLS(key, value) {
+    applyingRemote = true;
     try {
-      const snap = await db.collection("users").doc(user.uid).get();
-      if (snap.exists) applyRemote(snap.data());
-      await pushNow(); // publish the merged result
-    } catch (e) {
-      console.warn("[account] reconcile failed:", e && e.message);
+      localStorage.setItem(key, value);
+    } finally {
+      applyingRemote = false;
     }
+  }
+
+  // Load the account doc, build the profile list, migrating any pre-profiles
+  // data into a default profile the first time.
+  async function initProfiles() {
+    if (!user || !db) return;
+    activeProfileId = null;
+    let acct = {};
+    try {
+      const snap = await accountRef().get();
+      if (snap.exists) acct = snap.data() || {};
+    } catch (e) {
+      console.warn("[account] load account failed:", e && e.message);
+    }
+
+    profiles = Array.isArray(acct.profiles) ? acct.profiles : [];
+
+    if (!profiles.length) {
+      // First time on the profiles system — create a default profile and fold
+      // in any existing data (older top-level account data + this device).
+      const def = {
+        id: genId(),
+        name: user.displayName || "Profile 1",
+        avatar: avatarIndex(),
+      };
+      profiles = [def];
+      const legacy = {
+        myList: unionList(readJSON(KEYS.myList, []), acct.myList),
+        recent: unionList(readJSON(KEYS.recent, []), acct.recent).slice(0, 20),
+        progress: mergeProgress(readJSON(KEYS.progress, {}), acct.progress),
+        settings: { ...(acct.settings || {}), ...readJSON(KEYS.settings, {}) },
+        source: localStorage.getItem(KEYS.source) || acct.source || null,
+        updatedAt: Date.now(),
+      };
+      try {
+        await profileRef(def.id).set(legacy, { merge: true });
+        await accountRef().set(
+          { profiles, activeProfile: def.id, updatedAt: Date.now() },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("[account] profile bootstrap failed:", e && e.message);
+      }
+    }
+
+    renderProfilesUI();
+
+    // Choose which profile to open.
+    const remembered = localStorage.getItem(LS_PROFILE);
+    const validRemembered = profiles.find((p) => p.id === remembered);
+    if (profiles.length === 1) {
+      await selectProfile(profiles[0].id, { merge: true });
+    } else if (validRemembered) {
+      // Show the picker each launch (Netflix-style) but pre-load the remembered
+      // one's data so the app isn't empty behind the picker.
+      openPicker();
+    } else {
+      openPicker();
+    }
+  }
+
+  // Switch to a profile: save the current one, then load the chosen profile's
+  // data (replace, so lists don't mix), and start listening for its updates.
+  async function selectProfile(pid, opts) {
+    const merge = opts && opts.merge;
+    const p = profiles.find((x) => x.id === pid);
+    if (!p) return;
+
+    // Persist whatever the previous profile had before swapping.
+    if (activeProfileId && activeProfileId !== pid) await pushNow();
+    if (unsubscribeDoc) {
+      unsubscribeDoc();
+      unsubscribeDoc = null;
+    }
+
+    activeProfileId = pid;
+    setLS(LS_PROFILE, pid);
+    setLS(LS_AVATAR, String(p.avatar || 0));
+    accountRef().set({ activeProfile: pid }, { merge: true }).catch(() => {});
+
+    let data = {};
+    try {
+      const snap = await profileRef(pid).get();
+      if (snap.exists) data = snap.data() || {};
+    } catch (e) {
+      console.warn("[account] load profile failed:", e && e.message);
+    }
+    // On fresh login (merge) keep this device's data; on a manual switch replace.
+    applyProfileData(data, { replace: !merge });
+    if (merge) await pushNow(); // save the merged result to this profile
+
+    closePicker();
+    renderActiveProfile();
     listenForChanges();
   }
 
-  // Live updates from other devices.
-  function listenForChanges() {
-    if (!user || !db) return;
-    if (unsubscribeDoc) unsubscribeDoc();
-    unsubscribeDoc = db
-      .collection("users")
-      .doc(user.uid)
-      .onSnapshot(
-        (snap) => {
-          if (!snap.exists || snap.metadata.hasPendingWrites) return;
-          const data = snap.data();
-          if (!data) return;
-          // Ignore echoes of our own writes.
-          if (data.updatedAt && data.updatedAt <= lastLocalPush) return;
-          applyRemote(data);
-        },
-        (e) => console.warn("[account] listen failed:", e && e.message)
+  async function createProfile(name, avatar) {
+    if (profiles.length >= MAX_PROFILES) return;
+    const p = { id: genId(), name: name, avatar: avatar || 0 };
+    profiles.push(p);
+    try {
+      await accountRef().set(
+        { profiles, updatedAt: Date.now() },
+        { merge: true }
       );
+      await profileRef(p.id).set(
+        { myList: [], recent: [], progress: {}, updatedAt: Date.now() },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn("[account] create profile failed:", e && e.message);
+    }
+    renderProfilesUI();
+    return p;
+  }
+
+  async function updateProfileMeta(pid, patch) {
+    const p = profiles.find((x) => x.id === pid);
+    if (!p) return;
+    Object.assign(p, patch);
+    try {
+      await accountRef().set(
+        { profiles, updatedAt: Date.now() },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn("[account] update profile failed:", e && e.message);
+    }
+    if (pid === activeProfileId) {
+      if (typeof patch.avatar === "number") setLS(LS_AVATAR, String(patch.avatar));
+      renderActiveProfile();
+    }
+    renderProfilesUI();
+  }
+
+  async function deleteProfile(pid) {
+    if (profiles.length <= 1) return; // keep at least one
+    profiles = profiles.filter((x) => x.id !== pid);
+    try {
+      await accountRef().set(
+        { profiles, updatedAt: Date.now() },
+        { merge: true }
+      );
+      await profileRef(pid).delete();
+    } catch (e) {
+      console.warn("[account] delete profile failed:", e && e.message);
+    }
+    if (pid === activeProfileId) {
+      activeProfileId = null;
+      localStorage.removeItem(LS_PROFILE);
+    }
+    renderProfilesUI();
+  }
+
+  function activeProfile() {
+    return profiles.find((p) => p.id === activeProfileId) || null;
   }
 
   // ============================================================
@@ -276,6 +452,23 @@ const Account = (() => {
     els.switchText = $("#authSwitchText");
     els.switchLink = $("#authSwitch");
     els.resetLink = $("#authReset");
+
+    // Account menu — active profile + switch
+    els.profileName = $("#accountProfileName");
+    els.switchBtn = $("#accountSwitch");
+
+    // Profile picker + editor overlays
+    els.picker = $("#profilesOverlay");
+    els.pickerGrid = $("#profilesGrid");
+    els.pickerManage = $("#profilesManage");
+    els.pickerClose = $("#profilesClose");
+    els.pedit = $("#profileEdit");
+    els.peditTitle = $("#profileEditTitle");
+    els.peditName = $("#profileEditName");
+    els.peditSwatches = $("#profileEditSwatches");
+    els.peditSave = $("#profileEditSave");
+    els.peditDelete = $("#profileEditDelete");
+    els.peditError = $("#profileEditError");
   }
 
   // 3–20 chars: letters, numbers, underscore. Returns cleaned value or null.
@@ -343,11 +536,13 @@ const Account = (() => {
     return map[code] || (e && e.message) || "Something went wrong.";
   }
 
-  function initials(u) {
-    const s = (u.displayName || u.email || "?").trim();
+  function initialsFor(text) {
+    const s = (text || "?").trim();
     const parts = s.split(/[\s@._-]+/).filter(Boolean);
-    return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() ||
-      s[0].toUpperCase();
+    return (
+      ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() ||
+      s[0].toUpperCase()
+    );
   }
 
   function avatarIndex() {
@@ -355,20 +550,27 @@ const Account = (() => {
     return Number.isFinite(n) && n >= 0 && n < AVATAR_COLORS.length ? n : 0;
   }
 
-  function applyAvatar(u) {
-    if (u && u.photoURL) {
+  // Paint the header avatar from the active profile (falling back to the
+  // account identity before a profile is chosen), and highlight the swatch.
+  function applyAvatar() {
+    const p = activeProfile ? activeProfile() : null;
+    const label =
+      (p && p.name) ||
+      (user && (user.displayName || (user.email || "").split("@")[0])) ||
+      "";
+    const idx = p ? p.avatar || 0 : avatarIndex();
+    if (!p && user && user.photoURL) {
       els.avatar.style.background = "";
-      els.avatar.style.backgroundImage = `url("${u.photoURL}")`;
+      els.avatar.style.backgroundImage = `url("${user.photoURL}")`;
       els.avatar.textContent = "";
     } else {
       els.avatar.style.backgroundImage = "";
-      els.avatar.style.background = AVATAR_COLORS[avatarIndex()];
-      els.avatar.textContent = u ? initials(u) : "";
+      els.avatar.style.background = AVATAR_COLORS[idx];
+      els.avatar.textContent = label ? initialsFor(label) : "";
     }
-    const cur = avatarIndex();
     if (els.swatches) {
       els.swatches.querySelectorAll(".swatch").forEach((s, i) => {
-        s.classList.toggle("swatch--active", i === cur);
+        s.classList.toggle("swatch--active", i === idx);
       });
     }
   }
@@ -387,30 +589,153 @@ const Account = (() => {
     });
   }
 
+  // Menu swatches recolor the ACTIVE profile's avatar.
   function pickAvatar(i) {
-    applyingRemote = true;
-    try {
-      localStorage.setItem(LS_AVATAR, String(i));
-    } finally {
-      applyingRemote = false;
-    }
-    applyAvatar(user);
-    if (user && db) {
-      db.collection("users")
-        .doc(user.uid)
-        .set({ avatar: i, updatedAt: Date.now() }, { merge: true })
-        .catch(() => {});
-    }
+    setLS(LS_AVATAR, String(i));
+    applyAvatar();
+    if (user && activeProfileId) updateProfileMeta(activeProfileId, { avatar: i });
   }
 
   function renderSignedIn(u) {
     els.account.classList.add("account--in");
-    els.label.textContent = u.displayName || (u.email || "").split("@")[0] || "Account";
-    applyAvatar(u);
+    els.label.textContent =
+      u.displayName || (u.email || "").split("@")[0] || "Account";
     els.name.textContent = u.displayName || "Signed in";
     els.email.textContent = u.email || "";
     if (els.unameInput) els.unameInput.value = u.displayName || "";
+    applyAvatar();
     unameMsg("");
+  }
+
+  // Reflect the chosen profile in the header + account menu once selected.
+  function renderActiveProfile() {
+    const p = activeProfile();
+    if (!p) return;
+    els.label.textContent = p.name;
+    if (els.profileName) els.profileName.textContent = p.name;
+    applyAvatar();
+    if (els.switchBtn) els.switchBtn.hidden = false;
+  }
+
+  // ---------------- Profile picker ("Who's watching?") ----------------
+  function openPicker(opts) {
+    manageMode = false;
+    renderProfilesUI();
+    els.picker.hidden = false;
+    els.pickerClose.hidden = !activeProfileId; // can't close before first pick
+    document.documentElement.classList.add("modal-open");
+  }
+  function closePicker() {
+    els.picker.hidden = true;
+    els.pedit.hidden = true;
+    document.documentElement.classList.remove("modal-open");
+  }
+
+  function renderProfilesUI() {
+    if (!els.pickerGrid) return;
+    els.pickerGrid.innerHTML = "";
+    profiles.forEach((p) => {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "profile-tile";
+      if (p.id === activeProfileId) tile.classList.add("profile-tile--active");
+
+      const av = document.createElement("span");
+      av.className = "profile-tile__avatar";
+      av.style.background = AVATAR_COLORS[p.avatar || 0];
+      av.textContent = initialsFor(p.name);
+      if (manageMode) {
+        const pencil = document.createElement("span");
+        pencil.className = "profile-tile__edit";
+        pencil.textContent = "✎";
+        av.appendChild(pencil);
+      }
+      const nm = document.createElement("span");
+      nm.className = "profile-tile__name";
+      nm.textContent = p.name;
+
+      tile.appendChild(av);
+      tile.appendChild(nm);
+      tile.addEventListener("click", () =>
+        manageMode ? openEdit(p) : selectProfile(p.id)
+      );
+      els.pickerGrid.appendChild(tile);
+    });
+
+    if (profiles.length < MAX_PROFILES) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "profile-tile profile-tile--add";
+      add.innerHTML =
+        '<span class="profile-tile__avatar profile-tile__avatar--add">+</span>' +
+        '<span class="profile-tile__name">Add profile</span>';
+      add.addEventListener("click", () => openEdit(null));
+      els.pickerGrid.appendChild(add);
+    }
+
+    els.pickerManage.textContent = manageMode ? "Done" : "Manage Profiles";
+  }
+
+  // ---------------- Profile editor (add / rename / delete) ----------------
+  let editingId = null;
+  let editAvatar = 0;
+
+  function openEdit(p) {
+    editingId = p ? p.id : null;
+    editAvatar = p ? p.avatar || 0 : profiles.length % AVATAR_COLORS.length;
+    els.peditTitle.textContent = p ? "Edit profile" : "Add profile";
+    els.peditName.value = p ? p.name : "";
+    els.peditDelete.hidden = !p || profiles.length <= 1;
+    els.peditError.hidden = true;
+    buildEditSwatches();
+    els.pedit.hidden = false;
+    setTimeout(() => els.peditName.focus(), 30);
+  }
+  function closeEdit() {
+    els.pedit.hidden = true;
+    editingId = null;
+  }
+  function buildEditSwatches() {
+    els.peditSwatches.innerHTML = "";
+    AVATAR_COLORS.forEach((c, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch" + (i === editAvatar ? " swatch--active" : "");
+      b.style.background = c;
+      b.addEventListener("click", () => {
+        editAvatar = i;
+        buildEditSwatches();
+      });
+      els.peditSwatches.appendChild(b);
+    });
+  }
+  async function saveEdit() {
+    const name = (els.peditName.value || "").trim().slice(0, 20);
+    if (name.length < 1) {
+      els.peditError.textContent = "Enter a profile name.";
+      els.peditError.hidden = false;
+      return;
+    }
+    els.peditSave.disabled = true;
+    try {
+      if (editingId) {
+        await updateProfileMeta(editingId, { name, avatar: editAvatar });
+      } else {
+        await createProfile(name, editAvatar);
+      }
+      closeEdit();
+      renderProfilesUI();
+    } finally {
+      els.peditSave.disabled = false;
+    }
+  }
+  async function deleteEditing() {
+    if (!editingId) return;
+    if (!confirm("Delete this profile? Its list and history will be removed."))
+      return;
+    await deleteProfile(editingId);
+    closeEdit();
+    renderProfilesUI();
   }
 
   function unameMsg(text, ok) {
@@ -450,6 +775,8 @@ const Account = (() => {
     els.avatar.style.background = "";
     els.avatar.style.backgroundImage = "";
     els.avatar.textContent = "";
+    if (els.switchBtn) els.switchBtn.hidden = true;
+    closePicker();
     closeMenu();
   }
 
@@ -608,6 +935,38 @@ const Account = (() => {
       if (e.key === "Escape" && !els.modal.hidden) closeModal();
     });
 
+    // --- Profiles ---
+    if (els.switchBtn) {
+      els.switchBtn.addEventListener("click", () => {
+        closeMenu();
+        openPicker();
+      });
+    }
+    if (els.pickerManage) {
+      els.pickerManage.addEventListener("click", () => {
+        manageMode = !manageMode;
+        renderProfilesUI();
+      });
+    }
+    if (els.pickerClose) {
+      els.pickerClose.addEventListener("click", () => {
+        if (activeProfileId) closePicker();
+      });
+    }
+    if (els.pedit) {
+      els.pedit
+        .querySelectorAll("[data-pedit-close]")
+        .forEach((el) => el.addEventListener("click", closeEdit));
+      els.peditSave.addEventListener("click", saveEdit);
+      els.peditDelete.addEventListener("click", deleteEditing);
+      els.peditName.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveEdit();
+        }
+      });
+    }
+
     // Google OAuth can't run inside the desktop / Fire TV webviews.
     if (isEmbedded) {
       els.google.hidden = true;
@@ -659,8 +1018,10 @@ const Account = (() => {
         }
         if (user) {
           renderSignedIn(user);
-          reconcileOnLogin();
+          initProfiles();
         } else {
+          profiles = [];
+          activeProfileId = null;
           renderSignedOut();
         }
         document.dispatchEvent(new CustomEvent("account:authchanged"));

@@ -1290,8 +1290,34 @@ input:focus-visible {
   .player__source label {
     display: none;
   }
+  /* Keep logo + search + account all on one line without pushing the account
+     button off-screen (that's why sign-in "disappeared" on phones). */
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .logo {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .header__right {
+    gap: 8px;
+    min-width: 0;
+  }
+  .search {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 7px 10px;
+  }
   .search input {
-    width: 130px;
+    width: 100%;
+    min-width: 0;
+  }
+  .account {
+    flex-shrink: 0;
+  }
+  .account__btn {
+    padding: 4px 10px 4px 4px;
   }
   .hero {
     height: 70vh;
@@ -1308,6 +1334,24 @@ input:focus-visible {
   .modal__dialog {
     border-radius: 0;
     min-height: 100vh;
+  }
+}
+
+/* Very narrow phones: drop the search field to an icon-sized box so the
+   account button always has room; it still expands when focused/typed into. */
+@media (max-width: 430px) {
+  .search {
+    flex: 0 1 auto;
+  }
+  .search input {
+    width: 68px;
+  }
+  .search:focus-within {
+    flex: 1 1 auto;
+  }
+  .account__avatar {
+    width: 26px;
+    height: 26px;
   }
 }
 
@@ -1521,6 +1565,303 @@ input:focus-visible {
 }
 .signin-cta__btn:hover {
   background: var(--accent-2);
+}
+
+/* ===================== ACCOUNT: switch-profile button ===================== */
+.account__switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  margin-bottom: 12px;
+  border: 1px solid #3a3320;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.account__switch:hover {
+  border-color: var(--accent);
+  background: rgba(255, 159, 28, 0.1);
+}
+.account__switch b {
+  color: var(--bread);
+}
+.account__switch-cta {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ===================== PROFILE PICKER ("Who's watching?") ===================== */
+.profiles {
+  position: fixed;
+  inset: 0;
+  z-index: 97;
+  background: radial-gradient(circle at 50% 30%, #1e1810, #0b0906);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.profiles__close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.profiles__close:hover {
+  background: var(--accent);
+  color: #14110b;
+}
+.profiles__inner {
+  text-align: center;
+  max-width: 760px;
+}
+.profiles__brand {
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 18px;
+  margin-bottom: 18px;
+}
+.profiles__brand span {
+  color: var(--accent);
+}
+.profiles__title {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  margin-bottom: 34px;
+}
+.profiles__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 22px;
+  margin-bottom: 34px;
+}
+.profile-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.profile-tile__avatar {
+  position: relative;
+  width: clamp(88px, 14vw, 128px);
+  height: clamp(88px, 14vw, 128px);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: clamp(34px, 6vw, 52px);
+  font-weight: 800;
+  color: #14110b;
+  border: 3px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.profile-tile:hover .profile-tile__avatar {
+  border-color: #fff;
+  transform: scale(1.04);
+}
+.profile-tile--active .profile-tile__avatar {
+  border-color: var(--accent);
+}
+.profile-tile__avatar--add {
+  background: #241d13;
+  color: var(--muted);
+  border: 2px dashed #4a3f28;
+  font-weight: 400;
+}
+.profile-tile__edit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+}
+.profile-tile__name {
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-tile:hover .profile-tile__name {
+  color: #fff;
+}
+.profiles__manage {
+  border: 1px solid #4a3f28;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 13px;
+  padding: 11px 26px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.profiles__manage:hover {
+  color: #fff;
+  border-color: #fff;
+}
+
+/* ===================== PROFILE EDITOR ===================== */
+.pedit {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.pedit__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+}
+.pedit__dialog {
+  position: relative;
+  width: min(420px, 100%);
+  background: var(--bg-2);
+  border: 1px solid #332a1b;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+.pedit__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+}
+.pedit__close:hover {
+  background: var(--accent);
+  color: #14110b;
+}
+.pedit__title {
+  font-size: 22px;
+  margin-bottom: 18px;
+}
+.pedit__field {
+  display: block;
+  margin-bottom: 16px;
+}
+.pedit__field > span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.pedit__field input {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid #3a3320;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.pedit__field input:focus {
+  border-color: var(--accent);
+}
+.pedit__swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pedit__swatches .swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.pedit__swatches .swatch--active {
+  border-color: #fff;
+}
+.pedit__error {
+  background: rgba(234, 67, 53, 0.15);
+  border: 1px solid rgba(234, 67, 53, 0.4);
+  color: #ffb3ab;
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin-bottom: 12px;
+}
+.pedit__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+.pedit__delete {
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 1px solid #a33;
+  background: transparent;
+  color: #ff9a90;
+  font: inherit;
+  cursor: pointer;
+}
+.pedit__delete:hover {
+  background: rgba(234, 67, 53, 0.15);
+}
+.pedit__save {
+  flex: 1;
+  padding: 11px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--accent);
+  color: #14110b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pedit__save:hover {
+  background: var(--accent-2);
+}
+
+.tv-mode .profile-tile:focus .profile-tile__avatar,
+.tv-mode .profiles__manage:focus,
+.tv-mode .profiles__close:focus,
+.tv-mode .account__switch:focus,
+.tv-mode .pedit__save:focus,
+.tv-mode .pedit__delete:focus,
+.tv-mode .pedit__swatches .swatch:focus,
+.tv-mode .pedit__field input:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 .account__signout {
   width: 100%;

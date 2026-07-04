@@ -1,0 +1,13 @@
+Profiles (Netflix-style), new app icon, mobile sign-in fix
+
+- Netflix-style profiles under one account: a "Who's watching?" picker after
+  sign-in, up to 5 profiles each with a name + avatar color, add/rename/delete
+  via Manage, and profile switching from the account menu. My List, Continue
+  Watching, Recently Viewed and settings are stored per-profile in Firestore
+  (users/{uid}/profiles/{id}) and swapped cleanly when you switch. Existing
+  account data is migrated into a default profile on first run.
+- New app icon: regenerated all icons (Windows .ico, PWA, Apple touch, Android
+  launcher + Fire TV banner) from the new film-strip logo.
+- iOS/mobile header: shrink logo/search and keep the account button pinned so
+  the sign-in button no longer overflows off-screen on narrow phones.
+- Profile picker + editor are fully D-pad navigable on Fire TV.
