@@ -101,4 +101,22 @@ const CONFIG = {
   LS_SETTINGS: "csSettings",
   LS_SOURCE: "csSource",
   LS_RECENT: "csRecent",
+
+  /*
+   * --- Firebase (Club Sandwich shared account) ---
+   * Same project as clubsandwich.dev, so accounts are shared. Optional sign-in
+   * lets a viewer sync My List + Continue Watching + settings across devices
+   * (stored in Cloud Firestore under users/{uid}).
+   * These values are safe to ship in client code — Firestore security rules,
+   * not secrecy, protect the data.
+   */
+  FIREBASE: {
+    apiKey: "AIzaSyD0OhIiObfZqwAM_clquB4qPhpk1guqNuI",
+    authDomain: "club-sandwich-65378.firebaseapp.com",
+    projectId: "club-sandwich-65378",
+    storageBucket: "club-sandwich-65378.firebasestorage.app",
+    messagingSenderId: "654285335515",
+    appId: "1:654285335515:web:e1fac59428df67f03715fe",
+    measurementId: "G-V8Q78CW9CF",
+  },
 };

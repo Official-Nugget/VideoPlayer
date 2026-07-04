@@ -88,6 +88,22 @@
             autocomplete="off"
           />
         </form>
+
+        <!-- Account (Firebase) -->
+        <div class="account" id="account">
+          <button class="account__btn" id="accountBtn" aria-haspopup="true" aria-expanded="false">
+            <span class="account__avatar" id="accountAvatar" aria-hidden="true"></span>
+            <span class="account__label" id="accountLabel">Sign in</span>
+          </button>
+          <div class="account__menu" id="accountMenu" hidden>
+            <div class="account__who">
+              <span class="account__name" id="accountName"></span>
+              <span class="account__email" id="accountEmail"></span>
+            </div>
+            <div class="account__sync" id="accountSync">Synced to your account.</div>
+            <button class="account__signout" id="accountSignout">Sign out</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -178,6 +194,53 @@
       <div class="modal__dialog" role="dialog" aria-modal="true">
         <button class="modal__close" data-close aria-label="Close">&times;</button>
         <div class="modal__body" id="modalBody"></div>
+      </div>
+    </div>
+
+    <!-- ===================== AUTH MODAL ===================== -->
+    <div class="auth" id="authModal" hidden>
+      <div class="auth__backdrop" data-auth-close></div>
+      <div class="auth__dialog" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <button class="auth__close" data-auth-close aria-label="Close">&times;</button>
+        <div class="auth__brand">CLUB <span>SANDWICH</span></div>
+        <h2 class="auth__title" id="authTitle">Sign in</h2>
+        <p class="auth__sub">
+          One Club Sandwich account. Your list &amp; progress follow you to
+          every device.
+        </p>
+
+        <button class="auth__google" id="authGoogle" type="button">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.7 30.1 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.9 6.1C12.2 13.2 17.6 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-4 6.7-9.9 6.7-17.4z"/>
+            <path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.7-2.9-.7-4.6s.3-3.2.7-4.6l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l7.9-6.1z"/>
+            <path fill="#34A853" d="M24 48c6.1 0 11.3-2 15-5.5l-7.3-5.7c-2 1.4-4.7 2.3-7.7 2.3-6.4 0-11.8-3.7-13.6-9l-7.9 6.1C6.4 42.6 14.6 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div class="auth__or"><span>or</span></div>
+
+        <form class="auth__form" id="authForm">
+          <label class="auth__field">
+            <span>Email</span>
+            <input type="email" id="authEmail" autocomplete="email" required placeholder="you@example.com" />
+          </label>
+          <label class="auth__field">
+            <span>Password</span>
+            <input type="password" id="authPassword" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters" />
+          </label>
+          <div class="auth__error" id="authError" hidden></div>
+          <button class="auth__submit" id="authSubmit" type="submit">Sign in</button>
+        </form>
+
+        <p class="auth__switch">
+          <span id="authSwitchText">New to Club Sandwich?</span>
+          <a href="#" id="authSwitch" data-external-ignore>Create an account</a>
+        </p>
+        <p class="auth__reset">
+          <a href="#" id="authReset">Forgot password?</a>
+        </p>
       </div>
     </div>
 
@@ -305,11 +368,17 @@
     </footer>
     -->
 
+    <!-- Firebase (compat build so it works without a bundler) -->
+    <script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/tmdb.js"></script>
     <script src="assets/js/player.js"></script>
     <script src="assets/js/ui.js"></script>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/auth.js"></script>
     <script src="assets/js/tv.js"></script>
     <script>
       // Register the PWA service worker (browsers only; skip in the desktop

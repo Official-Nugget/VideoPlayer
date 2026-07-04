@@ -1,7 +1,7 @@
 {
   "name": "club-sandwich-streaming",
   "productName": "Club Sandwich Streaming",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Club Sandwich Streaming — a movie & TV streaming desktop app (TMDB + VidLink).",
   "main": "electron/main.js",
   "author": "Club Sandwich",

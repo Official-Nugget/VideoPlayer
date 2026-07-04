@@ -8,6 +8,15 @@
   const rowsEl = $("#rows");
   const gridView = $("#gridView");
   const heroEl = $("#hero");
+  let currentView = "home";
+
+  // When the signed-in account syncs new data (My List / progress) from the
+  // cloud, re-render the affected view — but never clobber an active search.
+  function refreshUserData() {
+    if (currentView === "mylist" && !gridView.hidden) return loadMyList();
+    if (gridView.hidden && !rowsEl.hidden) return loadHome();
+  }
+  document.addEventListener("account:datachanged", refreshUserData);
 
   // ---------- Setup / API key check ----------
   function keyConfigured() {
@@ -895,6 +904,7 @@
   }
 
   function route(view) {
+    currentView = view;
     setActiveNav(view);
     $("#searchInput").value = "";
     scrollToTop();

@@ -54,6 +54,11 @@
     ".trailer__close",
     ".trailer__yt",
     ".switch input",
+    ".account__btn",
+    ".account__signout",
+    ".auth__field input",
+    ".auth__switch a",
+    ".auth__reset a",
     "button",
   ].join(",");
 
@@ -61,9 +66,11 @@
 
   // The layer the user is currently in — focus stays trapped inside it.
   function activeScope() {
+    const authModal = $("#authModal");
     const trailer = $("#trailer");
     const player = $("#player");
     const modal = $("#modal");
+    if (authModal && !authModal.hidden) return authModal;
     if (trailer && !trailer.hidden) return trailer;
     if (player && !player.hidden) return player;
     if (modal && !modal.hidden) return modal;
@@ -309,6 +316,12 @@
       // Hand control straight to the video player.
       enterPlayerFrame();
       return;
+    } else if (scope === $("#authModal")) {
+      const email = $("#authEmail");
+      if (email && isVisible(email)) {
+        focusEl(email);
+        return;
+      }
     } else {
       const back = scope.querySelector(".modal__close, .trailer__close");
       if (back && isVisible(back)) {
@@ -329,7 +342,7 @@
       focusScopeStart();
     }
   });
-  ["#modal", "#player", "#trailer"].forEach((sel) => {
+  ["#modal", "#player", "#trailer", "#authModal"].forEach((sel) => {
     const el = $(sel);
     if (el)
       overlayObserver.observe(el, {
@@ -358,9 +371,15 @@
   // Close the topmost overlay if one is open; otherwise exit the app. Without
   // this, the hardware/remote Back would immediately quit even mid-video.
   function closeTopOverlay() {
+    const authModal = $("#authModal");
     const trailer = $("#trailer");
     const player = $("#player");
     const modal = $("#modal");
+    if (authModal && !authModal.hidden) {
+      const b = authModal.querySelector("[data-auth-close]");
+      if (b) b.click();
+      return true;
+    }
     if (trailer && !trailer.hidden) {
       const b = trailer.querySelector("[data-trailer-close]");
       if (b) b.click();
