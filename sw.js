@@ -1,9 +1,16 @@
 /*
  * Service worker: caches the app shell so Club Sandwich Streaming loads fast
  * and works offline (the UI — streams still need a connection).
+ *
+ * IMPORTANT: this uses a NETWORK-FIRST strategy for our own files. A previous
+ * cache-first version served a stale index.html/app.js forever, which meant new
+ * features (like accounts / sign-in) never appeared on the web + installed PWA
+ * until the cache name changed. Network-first fetches the latest version when
+ * online and only falls back to the cache when offline, so updates show up
+ * immediately and we never get "stuck" on an old build again.
  */
 
-const CACHE = "cs-stream-v1";
+const CACHE = "cs-stream-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +21,8 @@ const ASSETS = [
   "./assets/js/player.js",
   "./assets/js/ui.js",
   "./assets/js/app.js",
+  "./assets/js/auth.js",
+  "./assets/js/tv.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
 ];
@@ -41,10 +50,20 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET") return;
-  // Only serve our own app shell from cache; TMDB / VidLink always hit network.
-  if (url.origin === location.origin) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
-    );
-  }
+
+  // Only manage our own app shell. TMDB / VidLink / Firebase always hit the
+  // network directly (skip the SW entirely).
+  if (url.origin !== location.origin) return;
+
+  // Network-first: try the network, cache a fresh copy, and fall back to the
+  // cached copy only when offline.
+  event.respondWith(
+    fetch(event.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(event.request, copy)).catch(() => {});
+        return res;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+  );
 });

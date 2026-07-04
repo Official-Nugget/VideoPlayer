@@ -17,6 +17,7 @@
     if (gridView.hidden && !rowsEl.hidden) return loadHome();
   }
   document.addEventListener("account:datachanged", refreshUserData);
+  document.addEventListener("account:authchanged", refreshUserData);
 
   // ---------- Setup / API key check ----------
   function keyConfigured() {
@@ -864,9 +865,31 @@
     const items = MyList.all();
     const grid = $("#grid");
     grid.innerHTML = "";
+
+    // Nudge signed-out viewers to sign in so their list follows them around.
+    const signedOut =
+      window.Account && Account.isSignedIn && !Account.isSignedIn();
+    if (signedOut) {
+      const banner = document.createElement("div");
+      banner.className = "signin-cta";
+      banner.innerHTML =
+        '<div class="signin-cta__text"><b>Sign in to sync your list.</b>' +
+        " Save your My List, Continue Watching and settings to your Club" +
+        " Sandwich account and pick up on any device.</div>";
+      const btn = document.createElement("button");
+      btn.className = "signin-cta__btn";
+      btn.textContent = "Sign in";
+      btn.addEventListener("click", () => Account.promptSignIn());
+      banner.appendChild(btn);
+      grid.appendChild(banner);
+    }
+
     if (!items.length) {
-      grid.innerHTML =
-        '<div class="empty">Your list is empty. Tap “+ My List” on any title to save it here.</div>';
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent =
+        "Your list is empty. Tap “+ My List” on any title to save it here.";
+      grid.appendChild(empty);
       return;
     }
     items.forEach((item) => {

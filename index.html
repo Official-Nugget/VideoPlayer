@@ -96,12 +96,24 @@
             <span class="account__label" id="accountLabel">Sign in</span>
           </button>
           <div class="account__menu" id="accountMenu" hidden>
-            <div class="account__who">
-              <span class="account__name" id="accountName"></span>
-              <span class="account__email" id="accountEmail"></span>
+          <div class="account__who">
+            <span class="account__name" id="accountName"></span>
+            <span class="account__email" id="accountEmail"></span>
+          </div>
+          <div class="account__username">
+            <label for="accountUsernameInput">Username</label>
+            <div class="account__username-row">
+              <input type="text" id="accountUsernameInput" maxlength="20" placeholder="Set a username" />
+              <button id="accountUsernameSave" type="button">Save</button>
             </div>
-            <div class="account__sync" id="accountSync">Synced to your account.</div>
-            <button class="account__signout" id="accountSignout">Sign out</button>
+            <span class="account__username-msg" id="accountUsernameMsg" hidden></span>
+          </div>
+          <div class="account__avatars">
+            <label>Avatar color</label>
+            <div class="account__swatches" id="accountSwatches"></div>
+          </div>
+          <div class="account__sync" id="accountSync">Synced to your account.</div>
+          <button class="account__signout" id="accountSignout">Sign out</button>
           </div>
         </div>
       </div>
@@ -222,6 +234,10 @@
         <div class="auth__or"><span>or</span></div>
 
         <form class="auth__form" id="authForm">
+          <label class="auth__field" id="authUsernameField" hidden>
+            <span>Username</span>
+            <input type="text" id="authUsername" autocomplete="username" placeholder="3–20 letters, numbers or _" maxlength="20" />
+          </label>
           <label class="auth__field">
             <span>Email</span>
             <input type="email" id="authEmail" autocomplete="email" required placeholder="you@example.com" />

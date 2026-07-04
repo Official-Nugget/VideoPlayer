@@ -1396,6 +1396,90 @@ input:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.account__username {
+  margin-bottom: 12px;
+}
+.account__username > label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.account__username-row {
+  display: flex;
+  gap: 6px;
+}
+.account__username-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #3a3320;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.account__username-row input:focus {
+  border-color: var(--accent);
+}
+.account__username-row button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: #14110b;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.account__username-row button:hover {
+  background: var(--accent-2);
+}
+.account__username-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.account__username-msg {
+  display: block;
+  font-size: 12px;
+  color: #ffb3ab;
+  margin-top: 6px;
+}
+.account__username-msg--ok {
+  color: var(--bread);
+}
+.account__avatars {
+  margin-bottom: 12px;
+}
+.account__avatars > label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.account__swatches {
+  display: flex;
+  gap: 8px;
+}
+.account__swatches .swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.account__swatches .swatch:hover {
+  transform: scale(1.12);
+}
+.account__swatches .swatch--active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 3px var(--accent);
+}
 .account__sync {
   font-size: 12px;
   color: var(--bread);
@@ -1403,6 +1487,40 @@ input:focus-visible {
   border-radius: 8px;
   padding: 7px 10px;
   margin-bottom: 12px;
+}
+
+/* "Sign in to sync" prompt on the My List page */
+.signin-cta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(255, 159, 28, 0.16), rgba(255, 159, 28, 0.06));
+  border: 1px solid rgba(255, 159, 28, 0.35);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.signin-cta__text {
+  font-size: 14px;
+  color: var(--text);
+  max-width: 640px;
+}
+.signin-cta__btn {
+  flex-shrink: 0;
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: #14110b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.signin-cta__btn:hover {
+  background: var(--accent-2);
 }
 .account__signout {
   width: 100%;

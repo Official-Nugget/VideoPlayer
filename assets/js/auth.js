@@ -43,6 +43,18 @@ const Account = (() => {
 
   const $ = (s) => document.querySelector(s);
 
+  // Preset avatar gradients (used with the user's initials when they have no
+  // photo). Index is stored per account and synced.
+  const AVATAR_COLORS = [
+    "linear-gradient(135deg,#ff9f1c,#ffb347)",
+    "linear-gradient(135deg,#ef4444,#f97316)",
+    "linear-gradient(135deg,#22c55e,#84cc16)",
+    "linear-gradient(135deg,#3b82f6,#06b6d4)",
+    "linear-gradient(135deg,#a855f7,#ec4899)",
+    "linear-gradient(135deg,#64748b,#cbd5e1)",
+  ];
+  const LS_AVATAR = "csAvatar";
+
   let auth = null;
   let db = null;
   let user = null;
@@ -144,6 +156,7 @@ const Account = (() => {
       settings: readJSON(KEYS.settings, {}),
       source: localStorage.getItem(KEYS.source) || null,
       progress: readJSON(KEYS.progress, {}),
+      avatar: avatarIndex(),
       updatedAt: Date.now(),
     };
   }
@@ -184,6 +197,15 @@ const Account = (() => {
       } finally {
         applyingRemote = false;
       }
+    }
+    if (typeof data.avatar === "number" && !localStorage.getItem(LS_AVATAR)) {
+      applyingRemote = true;
+      try {
+        localStorage.setItem(LS_AVATAR, String(data.avatar));
+      } finally {
+        applyingRemote = false;
+      }
+      if (user) applyAvatar(user);
     }
     document.dispatchEvent(new CustomEvent("account:datachanged"));
   }
@@ -235,12 +257,18 @@ const Account = (() => {
     els.name = $("#accountName");
     els.email = $("#accountEmail");
     els.signout = $("#accountSignout");
+    els.unameInput = $("#accountUsernameInput");
+    els.unameSave = $("#accountUsernameSave");
+    els.unameMsg = $("#accountUsernameMsg");
+    els.swatches = $("#accountSwatches");
 
     els.modal = $("#authModal");
     els.title = $("#authTitle");
     els.google = $("#authGoogle");
     els.or = els.modal.querySelector(".auth__or");
     els.form = $("#authForm");
+    els.unameField = $("#authUsernameField");
+    els.unameIn = $("#authUsername");
     els.emailIn = $("#authEmail");
     els.passIn = $("#authPassword");
     els.error = $("#authError");
@@ -248,6 +276,12 @@ const Account = (() => {
     els.switchText = $("#authSwitchText");
     els.switchLink = $("#authSwitch");
     els.resetLink = $("#authReset");
+  }
+
+  // 3–20 chars: letters, numbers, underscore. Returns cleaned value or null.
+  function validUsername(raw) {
+    const u = (raw || "").trim();
+    return /^[a-zA-Z0-9_]{3,20}$/.test(u) ? u : null;
   }
 
   let mode = "signin"; // or "signup"
@@ -276,6 +310,7 @@ const Account = (() => {
       "autocomplete",
       signup ? "new-password" : "current-password"
     );
+    els.unameField.hidden = !signup;
     els.resetLink.parentElement.hidden = signup;
     showError("");
   }
@@ -315,22 +350,104 @@ const Account = (() => {
       s[0].toUpperCase();
   }
 
-  function renderSignedIn(u) {
-    els.account.classList.add("account--in");
-    els.label.textContent = u.displayName || (u.email || "").split("@")[0] || "Account";
-    if (u.photoURL) {
+  function avatarIndex() {
+    const n = parseInt(localStorage.getItem(LS_AVATAR) || "0", 10);
+    return Number.isFinite(n) && n >= 0 && n < AVATAR_COLORS.length ? n : 0;
+  }
+
+  function applyAvatar(u) {
+    if (u && u.photoURL) {
+      els.avatar.style.background = "";
       els.avatar.style.backgroundImage = `url("${u.photoURL}")`;
       els.avatar.textContent = "";
     } else {
       els.avatar.style.backgroundImage = "";
-      els.avatar.textContent = initials(u);
+      els.avatar.style.background = AVATAR_COLORS[avatarIndex()];
+      els.avatar.textContent = u ? initials(u) : "";
     }
+    const cur = avatarIndex();
+    if (els.swatches) {
+      els.swatches.querySelectorAll(".swatch").forEach((s, i) => {
+        s.classList.toggle("swatch--active", i === cur);
+      });
+    }
+  }
+
+  function buildSwatches() {
+    if (!els.swatches) return;
+    els.swatches.innerHTML = "";
+    AVATAR_COLORS.forEach((c, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.style.background = c;
+      b.setAttribute("aria-label", `Avatar color ${i + 1}`);
+      b.addEventListener("click", () => pickAvatar(i));
+      els.swatches.appendChild(b);
+    });
+  }
+
+  function pickAvatar(i) {
+    applyingRemote = true;
+    try {
+      localStorage.setItem(LS_AVATAR, String(i));
+    } finally {
+      applyingRemote = false;
+    }
+    applyAvatar(user);
+    if (user && db) {
+      db.collection("users")
+        .doc(user.uid)
+        .set({ avatar: i, updatedAt: Date.now() }, { merge: true })
+        .catch(() => {});
+    }
+  }
+
+  function renderSignedIn(u) {
+    els.account.classList.add("account--in");
+    els.label.textContent = u.displayName || (u.email || "").split("@")[0] || "Account";
+    applyAvatar(u);
     els.name.textContent = u.displayName || "Signed in";
     els.email.textContent = u.email || "";
+    if (els.unameInput) els.unameInput.value = u.displayName || "";
+    unameMsg("");
+  }
+
+  function unameMsg(text, ok) {
+    if (!els.unameMsg) return;
+    els.unameMsg.textContent = text || "";
+    els.unameMsg.hidden = !text;
+    els.unameMsg.classList.toggle("account__username-msg--ok", !!ok);
+  }
+
+  // Change (or set) the username from the account menu — works for accounts
+  // created before usernames existed, too.
+  async function changeUsername() {
+    if (!user) return;
+    const username = validUsername(els.unameInput.value);
+    if (!username) {
+      unameMsg("3–20 letters, numbers or underscore.");
+      return;
+    }
+    if (username === user.displayName) {
+      unameMsg("That's already your username.");
+      return;
+    }
+    els.unameSave.disabled = true;
+    try {
+      await saveUsername(user, username);
+      renderSignedIn(user);
+      unameMsg("Saved!", true);
+    } catch (e) {
+      unameMsg("Couldn't save — try again.");
+    } finally {
+      els.unameSave.disabled = false;
+    }
   }
   function renderSignedOut() {
     els.account.classList.remove("account--in");
     els.label.textContent = "Sign in";
+    els.avatar.style.background = "";
     els.avatar.style.backgroundImage = "";
     els.avatar.textContent = "";
     closeMenu();
@@ -358,11 +475,20 @@ const Account = (() => {
       showError("Enter your email and a password (6+ characters).");
       return;
     }
+    let username = null;
+    if (mode === "signup") {
+      username = validUsername(els.unameIn.value);
+      if (!username) {
+        showError("Pick a username: 3–20 letters, numbers or underscore.");
+        return;
+      }
+    }
     setBusy(true);
     showError("");
     try {
       if (mode === "signup") {
-        await auth.createUserWithEmailAndPassword(email, password);
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await saveUsername(cred.user, username);
       } else {
         await auth.signInWithEmailAndPassword(email, password);
       }
@@ -371,6 +497,27 @@ const Account = (() => {
       showError(friendlyError(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Store the username on the Firebase profile (displayName) and in the user's
+  // Firestore doc so it syncs and shows on every device.
+  async function saveUsername(u, username) {
+    if (!u || !username) return;
+    try {
+      await u.updateProfile({ displayName: username });
+    } catch (e) {
+      console.warn("[account] updateProfile failed:", e && e.message);
+    }
+    try {
+      if (db) {
+        await db
+          .collection("users")
+          .doc(u.uid)
+          .set({ username, updatedAt: Date.now() }, { merge: true });
+      }
+    } catch (e) {
+      console.warn("[account] username write failed:", e && e.message);
     }
   }
 
@@ -413,6 +560,7 @@ const Account = (() => {
   }
 
   function bindUI() {
+    buildSwatches();
     els.btn.addEventListener("click", () => {
       if (user) {
         els.menu.hidden ? openMenu() : closeMenu();
@@ -433,6 +581,13 @@ const Account = (() => {
         UI.notice("Signed out. Your data stays on this device.");
       } catch (e) {
         /* ignore */
+      }
+    });
+    els.unameSave.addEventListener("click", changeUsername);
+    els.unameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        changeUsername();
       }
     });
     document.addEventListener("click", (e) => {
@@ -508,6 +663,7 @@ const Account = (() => {
         } else {
           renderSignedOut();
         }
+        document.dispatchEvent(new CustomEvent("account:authchanged"));
       });
     }
     return true;
@@ -525,7 +681,22 @@ const Account = (() => {
     ensureFirebase();
   }
 
-  return { init };
+  // Open the sign-in modal from elsewhere in the app (e.g. the My List prompt).
+  function promptSignIn() {
+    if (!ensureFirebase()) {
+      UI.notice(
+        "Accounts need an internet connection — check your connection and try again."
+      );
+      return;
+    }
+    openModal();
+  }
+
+  return {
+    init,
+    isSignedIn: () => !!user,
+    promptSignIn,
+  };
 })();
 
 document.addEventListener("DOMContentLoaded", () => Account.init());
