@@ -44,6 +44,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Ensure the GitHub release exists
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Create the release up-front (idempotent). electron-builder otherwise
+          # tries to CREATE the release itself — and it fires two publishers (zip
+          # + dmg / nsis + portable) that race to create the same tag, so the
+          # loser gets a 422 "already_exists" and the job fails. If the release
+          # already exists, both publishers just upload into it.
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --notes "Club Sandwich Streaming $TAG"
+
       - name: Build & publish
         run: npm run release
         env:

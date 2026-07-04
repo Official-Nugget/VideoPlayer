@@ -348,6 +348,10 @@ const Account = (() => {
   // ---------------- Auth actions ----------------
   async function submitForm(e) {
     e.preventDefault();
+    if (!ensureFirebase()) {
+      showError("Can't reach the account service. Check your connection.");
+      return;
+    }
     const email = els.emailIn.value.trim();
     const password = els.passIn.value;
     if (!email || password.length < 6) {
@@ -371,6 +375,10 @@ const Account = (() => {
   }
 
   async function googleSignIn() {
+    if (!ensureFirebase()) {
+      showError("Can't reach the account service. Check your connection.");
+      return;
+    }
     setBusy(true);
     showError("");
     try {
@@ -386,6 +394,10 @@ const Account = (() => {
 
   async function resetPassword(e) {
     e.preventDefault();
+    if (!ensureFirebase()) {
+      showError("Can't reach the account service. Check your connection.");
+      return;
+    }
     const email = els.emailIn.value.trim();
     if (!email) {
       showError("Enter your email above, then tap “Forgot password?”");
@@ -404,9 +416,15 @@ const Account = (() => {
     els.btn.addEventListener("click", () => {
       if (user) {
         els.menu.hidden ? openMenu() : closeMenu();
-      } else {
-        openModal();
+        return;
       }
+      if (!ensureFirebase()) {
+        UI.notice(
+          "Accounts need an internet connection — check your connection and try again."
+        );
+        return;
+      }
+      openModal();
     });
     els.signout.addEventListener("click", async () => {
       closeMenu();
@@ -445,17 +463,20 @@ const Account = (() => {
   // ============================================================
   //  Boot
   // ============================================================
-  function init() {
-    cacheEls();
-    if (typeof firebase === "undefined" || !CONFIG.FIREBASE) {
-      // Firebase failed to load (offline / blocked) — accounts unavailable,
-      // the rest of the app still works with on-device data.
-      els.account.hidden = true;
-      return;
-    }
+  let firebaseReady = false;
+  let authStateBound = false;
 
+  // Lazily initialize Firebase. Returns true once auth/db are usable. We do NOT
+  // hide the account button if this fails — the button stays visible and we
+  // retry here whenever the user actually tries to sign in, so a slow CDN or a
+  // brief offline moment at launch no longer makes the button disappear.
+  function ensureFirebase() {
+    if (firebaseReady) return true;
+    if (typeof firebase === "undefined" || !CONFIG.FIREBASE) return false;
     try {
-      firebase.initializeApp(CONFIG.FIREBASE);
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(CONFIG.FIREBASE);
+      }
       auth = firebase.auth();
       db = firebase.firestore();
       // Fire TV / restrictive-network WebViews sometimes stall on Firestore's
@@ -467,26 +488,41 @@ const Account = (() => {
       }
     } catch (e) {
       console.warn("[account] Firebase init failed:", e && e.message);
+      return false;
+    }
+
+    firebaseReady = true;
+    hookLocalWrites();
+
+    if (!authStateBound) {
+      authStateBound = true;
+      auth.onAuthStateChanged((u) => {
+        user = u || null;
+        if (unsubscribeDoc) {
+          unsubscribeDoc();
+          unsubscribeDoc = null;
+        }
+        if (user) {
+          renderSignedIn(user);
+          reconcileOnLogin();
+        } else {
+          renderSignedOut();
+        }
+      });
+    }
+    return true;
+  }
+
+  function init() {
+    cacheEls();
+    if (!CONFIG.FIREBASE) {
       els.account.hidden = true;
       return;
     }
-
-    hookLocalWrites();
+    // Button is always shown and clickable; Firebase is initialized now if it's
+    // ready, otherwise on first sign-in attempt.
     bindUI();
-
-    auth.onAuthStateChanged((u) => {
-      user = u || null;
-      if (unsubscribeDoc) {
-        unsubscribeDoc();
-        unsubscribeDoc = null;
-      }
-      if (user) {
-        renderSignedIn(user);
-        reconcileOnLogin();
-      } else {
-        renderSignedOut();
-      }
-    });
+    ensureFirebase();
   }
 
   return { init };
