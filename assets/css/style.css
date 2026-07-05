@@ -190,6 +190,9 @@ button {
 .logo span {
   color: var(--accent);
 }
+.logo__short {
+  display: none;
+}
 .nav {
   display: flex;
   gap: 22px;
@@ -1564,13 +1567,27 @@ body:has(#profilesOverlay:not([hidden])) .mobnav {
     gap: 8px;
     height: calc(var(--header-h) + var(--safe-top));
   }
+  .header__left {
+    gap: 10px;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
   .logo {
-    font-size: 18px;
+    font-size: 20px;
     flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .logo__long {
+    display: none;
+  }
+  .logo__short {
+    display: inline;
   }
   .header__right {
     gap: 8px;
     min-width: 0;
+    flex: 1 1 auto;
+    justify-content: flex-end;
   }
   .search {
     flex: 1 1 auto;
