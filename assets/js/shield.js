@@ -1,11 +1,16 @@
 /*
- * Lightweight popup / redirect shield for the web & Fire TV builds.
+ * Lightweight popup shield for the web & Fire TV builds.
  *
  * Browsers can't filter network requests inside a cross-origin embed the way
- * Electron's session.webRequest can (see electron/adblock.js), but we can:
- *   1. Sandbox player iframes (no allow-popups) so embeds can't spawn tabs.
- *   2. Guard window.open against known ad hosts and unsolicited popups.
- *   3. Block clicks to known ad hosts that open in a new tab.
+ * Electron's session.webRequest can (see electron/adblock.js). We also CANNOT
+ * sandbox the player iframe — VidLink detects sandbox and refuses to play.
+ *
+ * What we can still do on our own page:
+ *   - Guard window.open against known ad hosts and unsolicited popups.
+ *   - Block clicks to known ad hosts that open in a new tab.
+ *
+ * Popups spawned *inside* the embed iframe are out of reach from here.
+ * Desktop app = full blocking; web = uBlock Origin or similar for the rest.
  *
  * Dormant in the Electron desktop app — that build uses electron/adblock.js.
  */
@@ -148,20 +153,4 @@
     },
     true
   );
-
-  // Sandbox embeds: scripts + playback yes, popups no.
-  function hardenIframes() {
-    const sandbox =
-      "allow-scripts allow-same-origin allow-presentation allow-forms";
-    ["playerFrame", "trailerFrame"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el && !el.getAttribute("sandbox")) el.setAttribute("sandbox", sandbox);
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", hardenIframes);
-  } else {
-    hardenIframes();
-  }
 })();
