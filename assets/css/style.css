@@ -187,7 +187,9 @@ button {
   letter-spacing: 1px;
   color: #fff;
 }
-.logo span {
+/* Two-tone brand: first word white, second word / letter gold */
+.logo__long > span,
+.logo__short > span {
   color: var(--accent);
 }
 .logo__short {
