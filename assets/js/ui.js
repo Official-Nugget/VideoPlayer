@@ -166,16 +166,33 @@ const UI = (() => {
 
   // ---------- Player overlay ----------
   function openPlayer(title) {
+    const player = $("#player");
     $("#playerTitle").textContent = title || "";
-    $("#player").hidden = false;
+    player.hidden = false;
+    player.classList.remove("chrome-hidden");
     document.body.style.overflow = "hidden";
+    player.dispatchEvent(new CustomEvent("player:opened", { bubbles: true }));
   }
   function setPlayerFrame(url) {
-    $("#playerFrame").src = url;
+    const frame = $("#playerFrame");
+    const load = () => {
+      frame.src = url;
+    };
+    // iOS Safari can render a zero-height iframe if src is set before layout.
+    const touch =
+      window.matchMedia("(hover: none)").matches ||
+      window.matchMedia("(pointer: coarse)").matches;
+    if (touch) {
+      requestAnimationFrame(() => requestAnimationFrame(load));
+    } else {
+      load();
+    }
   }
   function closePlayer() {
     $("#playerFrame").src = "about:blank";
-    $("#player").hidden = true;
+    const player = $("#player");
+    player.hidden = true;
+    player.classList.remove("chrome-hidden");
     $("#settingsPop").hidden = true;
     document.body.style.overflow = "";
     if (window.desktop?.clearPresence) window.desktop.clearPresence();

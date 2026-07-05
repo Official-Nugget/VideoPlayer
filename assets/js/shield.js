@@ -156,8 +156,13 @@
 
   // Popunders from the embed iframe steal window focus. We can't block those
   // popups (cross-origin), but snapping focus back reduces the hijack window.
+  // Skip on touch/mobile — iOS Safari breaks iframe playback when we yank focus.
+  const isMobileWeb =
+    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+    window.matchMedia("(pointer: coarse)").matches;
+
   const player = document.getElementById("player");
-  if (player) {
+  if (player && !isMobileWeb) {
     let playerOpen = false;
     new MutationObserver(() => {
       playerOpen = !player.hidden;

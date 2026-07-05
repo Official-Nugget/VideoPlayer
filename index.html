@@ -328,85 +328,93 @@
     <!-- ===================== PLAYER OVERLAY ===================== -->
     <div class="player" id="player" hidden>
       <div class="player__bar">
-        <button class="player__back" id="playerBack" aria-label="Back">
-          &larr; Back
-        </button>
-        <button class="player__navbtn" id="playerPrev" title="Previous episode" hidden>
-          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
-          Prev
-        </button>
-        <button class="player__navbtn" id="playerNext" title="Next episode" hidden>
-          Next
-          <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z" /></svg>
-        </button>
-        <span class="player__title" id="playerTitle"></span>
-        <div class="player__spacer"></div>
-        <div class="player__source">
-          <label for="sourceSelect">Source</label>
-          <select id="sourceSelect" class="select select--sm"></select>
-        </div>
-        <button
-          class="player__iconbtn"
-          id="playerCast"
-          aria-label="Open in browser to cast"
-          title="Open in browser (to cast to a TV)"
-          hidden
-        >
-          <svg viewBox="0 0 24 24">
-            <path
-              d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2a9 9 0 0 1 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
-            />
-          </svg>
-        </button>
-        <div class="player__settings-wrap">
-          <button
-            class="player__iconbtn"
-            id="playerSettings"
-            aria-label="Playback settings"
-            title="Playback settings"
-          >
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7zm7.4-2.5a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.3 7.3 0 0 0-1.7 1l-2.4-1-2 3.4L5.5 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1l.4 2.5h4l.4-2.5c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6z"
-              />
-            </svg>
-          </button>
-          <div class="settings-pop" id="settingsPop" hidden>
-            <h4>Playback</h4>
-            <label class="switch">
-              <input type="checkbox" id="setAutoplay" /> <span>Autoplay</span>
-            </label>
-            <label class="switch">
-              <input type="checkbox" id="setResume" />
-              <span>Resume where I left off</span>
-            </label>
-            <label class="switch">
-              <input type="checkbox" id="setRemember" />
-              <span>Remember source choice</span>
-            </label>
-            <label class="switch">
-              <input type="checkbox" id="setAutoNext" />
-              <span>Auto-play next episode</span>
-            </label>
-            <label class="settings-pop__field">
-              <span>Subtitle language</span>
-              <select id="setSubLang" class="select select--sm"></select>
-            </label>
-            <p class="settings-pop__note settings-pop__note--lang">
-              Subtitles apply on VidSrc sources. For audio or dubs, use the
-              player&rsquo;s CC / settings menu, or try another Source.
-            </p>
-            <p class="settings-pop__note">
-              Changes apply when you switch source or reopen a video.
-            </p>
+        <div class="player__bar-inner">
+          <div class="player__bar-start">
+            <button class="player__back" id="playerBack" aria-label="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              <span class="player__back-label">Back</span>
+            </button>
+            <button class="player__navbtn" id="playerPrev" title="Previous episode" hidden>
+              <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
+              <span>Prev</span>
+            </button>
+            <button class="player__navbtn" id="playerNext" title="Next episode" hidden>
+              <span>Next</span>
+              <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z" /></svg>
+            </button>
+          </div>
+          <h2 class="player__title" id="playerTitle"></h2>
+          <div class="player__bar-end">
+            <div class="player__source">
+              <label for="sourceSelect">Source</label>
+              <select id="sourceSelect" class="select select--sm"></select>
+            </div>
+            <button
+              class="player__iconbtn"
+              id="playerCast"
+              aria-label="Open in browser to cast"
+              title="Open in browser (to cast to a TV)"
+              hidden
+            >
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2a9 9 0 0 1 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"
+                />
+              </svg>
+            </button>
+            <div class="player__settings-wrap">
+              <button
+                class="player__iconbtn"
+                id="playerSettings"
+                aria-label="Playback settings"
+                title="Playback settings"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7zm7.4-2.5a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.3 7.3 0 0 0-1.7 1l-2.4-1-2 3.4L5.5 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1l.4 2.5h4l.4-2.5c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6z"
+                  />
+                </svg>
+              </button>
+              <div class="settings-pop" id="settingsPop" hidden>
+                <h4>Playback</h4>
+                <label class="switch">
+                  <input type="checkbox" id="setAutoplay" /> <span>Autoplay</span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="setResume" />
+                  <span>Resume where I left off</span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="setRemember" />
+                  <span>Remember source choice</span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="setAutoNext" />
+                  <span>Auto-play next episode</span>
+                </label>
+                <label class="settings-pop__field">
+                  <span>Subtitle language</span>
+                  <select id="setSubLang" class="select select--sm"></select>
+                </label>
+                <p class="settings-pop__note settings-pop__note--lang">
+                  Subtitles apply on VidSrc sources. For audio or dubs, use the
+                  player&rsquo;s CC / settings menu, or try another Source.
+                </p>
+                <p class="settings-pop__note">
+                  Changes apply when you switch source or reopen a video.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      <div class="player__pointer-layer" id="playerPointerLayer" aria-hidden="true"></div>
       <div class="player__frame">
         <iframe
           id="playerFrame"
           allowfullscreen
-          allow="autoplay; encrypted-media; picture-in-picture"
+          webkitallowfullscreen
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           referrerpolicy="origin"
         ></iframe>
       </div>

@@ -52,6 +52,7 @@ html.is-electron {
   z-index: 200;
   -webkit-app-region: drag;
   user-select: none;
+  transition: opacity 0.25s ease;
 }
 .titlebar__brand {
   display: flex;
@@ -170,7 +171,7 @@ button {
   padding: 0 4vw;
   z-index: 60;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, opacity 0.25s ease, transform 0.25s ease;
 }
 .header.scrolled {
   background: var(--bg);
@@ -834,6 +835,9 @@ button {
   background: #000;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
 }
 .player__bar {
   position: absolute;
@@ -841,37 +845,87 @@ button {
   left: 0;
   right: 0;
   z-index: 6;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 20px;
-  /* Floats over the video like a real player's control bar. */
+  padding: max(10px, var(--safe-top)) 16px 14px;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.92),
-    rgba(0, 0, 0, 0.55) 60%,
-    rgba(0, 0, 0, 0)
+    rgba(8, 6, 4, 0.94) 0%,
+    rgba(8, 6, 4, 0.72) 55%,
+    rgba(8, 6, 4, 0) 100%
   );
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.player__bar-inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.player__bar-start,
+.player__bar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.player__bar-end {
+  margin-left: auto;
 }
 /* Auto-hidden state (toggled by JS after mouse inactivity, or by the remote
-   on Fire TV). Slides up out of view for a clean full-screen video. */
+   on Fire TV). Fades out for a clean full-screen video. */
 .player.chrome-hidden .player__bar {
-  transform: translateY(-100%);
   opacity: 0;
   pointer-events: none;
 }
-.player.chrome-hidden {
+.player--touch.chrome-hidden .player__bar {
+  opacity: 1;
+}
+/* Sits below the iframe while controls are visible; rises above only when hidden
+   so desktop mouse movement can still reveal the bar over cross-origin embeds. */
+.player__pointer-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: transparent;
+  touch-action: manipulation;
+  pointer-events: none;
+}
+.player.chrome-hidden .player__pointer-layer {
+  z-index: 7;
+  pointer-events: auto;
   cursor: none;
 }
+.player--touch .player__pointer-layer {
+  display: none;
+}
+body:has(#player:not([hidden])) .header {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+body.is-electron:has(#player:not([hidden])) .titlebar {
+  opacity: 0;
+  pointer-events: none;
+}
 .player__back {
-  background: none;
-  border: 1px solid #333;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+.player__back svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  flex-shrink: 0;
 }
 .player__back:hover {
   background: var(--accent);
@@ -882,11 +936,11 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: none;
-  border: 1px solid #3a2f1e;
-  color: var(--bread);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f0e6d6;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
 }
@@ -901,15 +955,18 @@ button {
   color: #1a1206;
 }
 .player__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
-  color: #eee;
+  color: #f2f2f2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 40vw;
-}
-.player__spacer {
-  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 .player__source {
   display: flex;
@@ -932,9 +989,9 @@ button {
   width: 38px;
   height: 38px;
   border-radius: 8px;
-  border: 1px solid #3a2f1e;
-  background: none;
-  color: var(--bread);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f0e6d6;
 }
 .player__iconbtn svg {
   width: 20px;
@@ -1066,13 +1123,16 @@ button {
 .player__frame {
   position: absolute;
   inset: 0;
+  z-index: 3;
 }
 .player__frame iframe {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  min-height: 100%;
   border: 0;
+  background: #000;
 }
 
 /* ===================== NOTICE / SKELETON / SPINNER ===================== */
@@ -1696,21 +1756,27 @@ body:has(#profilesOverlay:not([hidden])) .mobnav {
     width: 90px;
   }
   .player__bar {
-    padding: var(--safe-top) 10px 0;
-    gap: 8px;
-    height: calc(52px + var(--safe-top));
+    padding: max(8px, var(--safe-top)) 10px 10px;
   }
-  .player__title {
-    max-width: 28vw;
-    font-size: 13px;
+  .player__bar-inner {
+    gap: 6px;
+    min-height: 40px;
   }
-  .player__source label {
+  .player__back-label {
     display: none;
   }
   .player__back {
-    padding: 8px 12px;
-    font-size: 13px;
+    padding: 8px;
+    min-width: 40px;
     min-height: 40px;
+    justify-content: center;
+  }
+  .player__title {
+    font-size: 13px;
+    padding: 0 4px;
+  }
+  .player__source label {
+    display: none;
   }
   .player__navbtn {
     padding: 8px;

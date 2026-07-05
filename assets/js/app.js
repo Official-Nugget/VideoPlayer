@@ -994,33 +994,50 @@
     (function initPlayerChrome() {
       const player = $("#player");
       const bar = player.querySelector(".player__bar");
+      const pointerLayer = $("#playerPointerLayer");
       const isTv = () => document.documentElement.classList.contains("tv-mode");
+      const isTouchUI =
+        window.matchMedia("(hover: none)").matches ||
+        window.matchMedia("(pointer: coarse)").matches;
+      const HIDE_MS = 3000;
       let hideTimer;
       let overBar = false;
+
+      if (isTouchUI) player.classList.add("player--touch");
+
       const scheduleHide = () => {
+        if (isTouchUI) return;
         clearTimeout(hideTimer);
         if (isTv() || overBar || player.hidden) return;
-        hideTimer = setTimeout(() => player.classList.add("chrome-hidden"), 3000);
+        hideTimer = setTimeout(() => {
+          player.classList.add("chrome-hidden");
+        }, HIDE_MS);
       };
+
       const showBar = () => {
         if (isTv() || player.hidden) return;
         player.classList.remove("chrome-hidden");
         scheduleHide();
       };
-      player.addEventListener("mousemove", showBar);
-      player.addEventListener("touchend", showBar, { passive: true });
-      player
-        .querySelector(".player__frame")
-        ?.addEventListener("touchend", showBar, { passive: true });
-      bar.addEventListener("mouseenter", () => {
+
+      if (!isTouchUI) {
+        pointerLayer?.addEventListener("mousemove", showBar);
+        pointerLayer?.addEventListener("touchstart", showBar, { passive: true });
+      }
+      const barInner = bar.querySelector(".player__bar-inner");
+      barInner?.addEventListener("mousemove", showBar);
+      barInner?.addEventListener("touchstart", showBar, { passive: true });
+      barInner?.addEventListener("mouseenter", () => {
         overBar = true;
         clearTimeout(hideTimer);
         player.classList.remove("chrome-hidden");
       });
-      bar.addEventListener("mouseleave", () => {
+      barInner?.addEventListener("mouseleave", () => {
         overBar = false;
         scheduleHide();
       });
+      player.addEventListener("player:opened", showBar);
+
       new MutationObserver(() => {
         if (player.hidden) {
           clearTimeout(hideTimer);
