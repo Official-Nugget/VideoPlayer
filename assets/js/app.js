@@ -984,6 +984,7 @@
       el.addEventListener("click", UI.closeTrailer)
     );
     $("#playerBack").addEventListener("click", UI.closePlayer);
+    $("#playerGateBtn")?.addEventListener("click", () => UI.confirmPlayerStart());
 
     // Auto-hide the floating player toolbar (like a real video player). On
     // desktop/web it reveals on mouse movement and fades after a few seconds

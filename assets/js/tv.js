@@ -41,6 +41,7 @@
     ".logo",
     "#searchInput",
     "#playerFrame",
+    "#playerGateBtn",
     ".card",
     ".episode",
     ".btn",

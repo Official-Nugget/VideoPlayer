@@ -153,4 +153,26 @@
     },
     true
   );
+
+  // Popunders from the embed iframe steal window focus. We can't block those
+  // popups (cross-origin), but snapping focus back reduces the hijack window.
+  const player = document.getElementById("player");
+  if (player) {
+    let playerOpen = false;
+    new MutationObserver(() => {
+      playerOpen = !player.hidden;
+    }).observe(player, { attributes: true, attributeFilter: ["hidden"] });
+
+    window.addEventListener("blur", () => {
+      if (!playerOpen) return;
+      const gate = document.getElementById("playerGate");
+      if (gate && !gate.hidden) return; // user hasn't tapped play yet
+      window.setTimeout(() => {
+        if (!player.hidden) window.focus();
+      }, 0);
+      window.setTimeout(() => {
+        if (!player.hidden) window.focus();
+      }, 150);
+    });
+  }
 })();

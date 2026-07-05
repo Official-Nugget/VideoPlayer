@@ -1048,6 +1048,48 @@ button {
   position: absolute;
   inset: 0;
 }
+.player__gate {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.player__gate-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 26px 36px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 159, 28, 0.45);
+  background: rgba(39, 31, 21, 0.96);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  min-width: 200px;
+}
+.player__gate-btn svg {
+  width: 56px;
+  height: 56px;
+  fill: var(--accent);
+}
+.player__gate-btn small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.player__gate-btn:hover,
+.player__gate-btn:focus-visible {
+  border-color: var(--accent);
+  background: rgba(50, 40, 28, 0.98);
+}
 .player__frame iframe {
   position: absolute;
   inset: 0;
@@ -1429,6 +1471,7 @@ input:focus-visible {
 .tv-mode .player__back:focus,
 .tv-mode .player__navbtn:focus,
 .tv-mode .player__iconbtn:focus,
+.tv-mode .player__gate-btn:focus,
 .tv-mode .modal__close:focus,
 .tv-mode .trailer__close:focus {
   outline: 3px solid var(--accent);
