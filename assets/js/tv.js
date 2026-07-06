@@ -302,10 +302,15 @@
     if (player) player.classList.add("chrome-hidden"); // fullscreen video
     const grab = () => {
       try {
-        frame.focus();
+        frame.focus({ preventScroll: true });
       } catch (e) {
-        /* ignore */
+        try {
+          frame.focus();
+        } catch (e2) {
+          /* ignore */
+        }
       }
+      window.scrollTo(0, 0);
       if (player) player.classList.add("chrome-hidden");
     };
     setTimeout(grab, 300);

@@ -1535,6 +1535,46 @@ input:focus-visible {
 /* The floating/auto-hiding toolbar is now shared base behaviour (see
    .player__bar / .player.chrome-hidden). On Fire TV it's revealed by the
    remote (see tv.js) rather than by mouse movement. */
+/* Fire TV / Android TV: WebView mishandles 100dvh and focus-scroll, which
+   pushes the embed above the top edge and clips the picture. */
+.tv-mode #player {
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100% !important;
+  max-height: 100vh;
+  min-height: 0;
+}
+.tv-mode .player__frame {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.tv-mode .player__frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+.tv-mode .player__bar {
+  padding-top: 12px;
+}
+html.tv-mode:has(#player:not([hidden])),
+html.tv-mode:has(#player:not([hidden])) body {
+  overflow: hidden !important;
+  height: 100%;
+  width: 100%;
+}
 .tv-mode #playerFrame:focus {
   outline: none;
 }

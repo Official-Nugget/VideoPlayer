@@ -171,6 +171,11 @@ const UI = (() => {
     player.hidden = false;
     player.classList.remove("chrome-hidden");
     document.body.style.overflow = "hidden";
+    if (document.documentElement.classList.contains("tv-mode")) {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
     player.dispatchEvent(new CustomEvent("player:opened", { bubbles: true }));
   }
   function setPlayerFrame(url) {
