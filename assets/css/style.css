@@ -955,6 +955,12 @@ body.is-electron:has(#player:not([hidden])) .titlebar {
   border-color: var(--accent);
   color: #1a1206;
 }
+.player__remote {
+  display: none;
+}
+.tv-mode .player__remote {
+  display: inline-flex;
+}
 .player__title {
   flex: 1;
   min-width: 0;
@@ -1535,6 +1541,80 @@ input:focus-visible {
 }
 .tv-mode .row__track {
   scroll-behavior: auto;
+}
+/* Lighter home UI + less animation on TV (smoother on Fire TV hardware). */
+.tv-mode html {
+  scroll-behavior: auto;
+}
+.tv-mode .hero {
+  height: 50vh;
+  min-height: 260px;
+}
+.tv-mode .hero__content {
+  padding-bottom: 4vh;
+  max-width: 520px;
+}
+.tv-mode .hero__title {
+  font-size: clamp(22px, 3vw, 38px);
+  margin-bottom: 10px;
+}
+.tv-mode .hero__overview {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+  -webkit-line-clamp: 2;
+}
+.tv-mode .hero__meta {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.tv-mode .btn {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.tv-mode .card {
+  width: 120px;
+}
+.tv-mode .row {
+  margin: 16px 0;
+  animation: none !important;
+}
+.tv-mode .row__title {
+  font-size: 17px;
+}
+.tv-mode .row__track {
+  padding: 10px 4vw 16px;
+}
+.tv-mode .grid .card {
+  animation: none !important;
+}
+.tv-mode .card__img,
+.tv-mode .card__noimg {
+  transition: none;
+}
+.tv-mode .card:focus {
+  transform: scale(1.04);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.tv-mode .modal__backdrop {
+  backdrop-filter: none;
+}
+.tv-mode .modal__dialog {
+  animation: none !important;
+}
+.tv-mode #modal {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+html.tv-mode:has(#modal:not([hidden])) body,
+html.tv-mode:has(#modal:not([hidden])) #viewport {
+  overflow: hidden !important;
+}
+.tv-mode .player__remote:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  background: rgba(255, 159, 28, 0.2);
 }
 /* The floating/auto-hiding toolbar is now shared base behaviour (see
    .player__bar / .player.chrome-hidden). On Fire TV it's revealed by the

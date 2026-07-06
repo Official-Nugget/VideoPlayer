@@ -47,6 +47,7 @@
     "select",
     ".filter__reset",
     ".player__back",
+    "#playerRemote",
     ".player__navbtn",
     ".player__iconbtn",
     ".modal__close",
@@ -293,24 +294,48 @@
     return true;
   }
 
-  function scrollVerticallyTo(el) {
-    const marginTop = 88;
-    const marginBottom = 40;
-    const rect = el.getBoundingClientRect();
+  function episodeSibling(cur, dir) {
+    if (!cur.classList.contains("episode")) return null;
+    const list = cur.closest("#episodeList");
+    if (!list) return null;
+    const eps = Array.from(list.querySelectorAll(".episode")).filter(isVisible);
+    const i = eps.indexOf(cur);
+    if (i < 0) return null;
+    if (dir === "down" && i < eps.length - 1) return eps[i + 1];
+    if (dir === "up" && i > 0) return eps[i - 1];
+    return null;
+  }
+
+  function scrollContainerFor(el) {
+    const modal = $("#modal");
+    if (modal && !modal.hidden && el.closest("#modal")) return modal;
     const viewport =
       document.querySelector(".is-electron .viewport") || $("#viewport");
+    if (viewport && viewport.scrollHeight > viewport.clientHeight + 2) return viewport;
+    return null;
+  }
 
-    if (viewport && viewport.scrollHeight > viewport.clientHeight + 2) {
-      const vRect = viewport.getBoundingClientRect();
-      const relTop = rect.top - vRect.top;
-      const relBottom = rect.bottom - vRect.top;
+  function scrollVerticallyTo(el) {
+    const modal = $("#modal");
+    const inModal = modal && !modal.hidden && el.closest("#modal");
+    const marginTop = inModal ? 20 : 88;
+    const marginBottom = inModal ? 28 : 40;
+    const rect = el.getBoundingClientRect();
+    const container = scrollContainerFor(el);
+
+    if (container) {
+      const cRect = container.getBoundingClientRect();
+      const relTop = rect.top - cRect.top;
+      const relBottom = rect.bottom - cRect.top;
       if (relTop < marginTop) {
-        viewport.scrollTop += relTop - marginTop;
-      } else if (relBottom > viewport.clientHeight - marginBottom) {
-        viewport.scrollTop += relBottom - (viewport.clientHeight - marginBottom);
+        container.scrollTop += relTop - marginTop;
+      } else if (relBottom > container.clientHeight - marginBottom) {
+        container.scrollTop += relBottom - (container.clientHeight - marginBottom);
       }
       return;
     }
+
+    if (inModal) return;
 
     if (rect.top < marginTop) {
       window.scrollBy(0, rect.top - marginTop);
@@ -353,6 +378,24 @@
     if (!cur || cur === document.body || !items.includes(cur)) {
       focusEl(firstContentFocus(scope));
       return;
+    }
+
+    const modal = $("#modal");
+    if (modal && !modal.hidden && scope === modal) {
+      if (cur.classList.contains("episode") && (dir === "up" || dir === "down")) {
+        const epNext = episodeSibling(cur, dir);
+        if (epNext) {
+          focusEl(epNext);
+          return;
+        }
+      }
+      if (cur.id === "seasonSelect" && dir === "down") {
+        const ep = modal.querySelector(".episode");
+        if (ep && isVisible(ep)) {
+          focusEl(ep);
+          return;
+        }
+      }
     }
 
     // Header chrome: down always returns to the main content, never traps in the logo.
@@ -556,8 +599,9 @@
     const frame = $("#playerFrame");
     if (!frame) return;
     const player = $("#player");
-    if (player) player.classList.add("chrome-hidden"); // fullscreen video
+    if (player) player.classList.add("chrome-hidden");
     const grab = () => {
+      if (!frame.getAttribute("tabindex")) frame.setAttribute("tabindex", "0");
       try {
         frame.focus({ preventScroll: true });
       } catch (e) {
@@ -568,14 +612,18 @@
         }
       }
       window.scrollTo(0, 0);
+      const vp = $("#viewport");
+      if (vp) vp.scrollTop = 0;
       if (player) player.classList.add("chrome-hidden");
     };
-    setTimeout(grab, 300);
+    grab();
+    setTimeout(grab, 120);
+    setTimeout(grab, 450);
     frame.addEventListener("load", grab, { once: true });
     if (!playerHintShown && window.UI && UI.notice) {
       playerHintShown = true;
       UI.notice(
-        "Use the remote to control the video. Press Back for options (source, episodes), Back again to exit.",
+        "Remote controls the video. Press Back for the toolbar, then Remote to control playback again.",
         false
       );
     }
@@ -615,6 +663,13 @@
     } else {
       const back = scope.querySelector(".modal__close, .trailer__close");
       if (back && isVisible(back)) {
+        if (scope === $("#modal")) {
+          const play = scope.querySelector("#mPlay, #mResume");
+          if (play && isVisible(play)) {
+            focusEl(play);
+            return;
+          }
+        }
         focusEl(back);
         return;
       }
@@ -656,6 +711,8 @@
   window.addEventListener("load", () => {
     const logo = document.querySelector(".logo");
     if (logo) logo.setAttribute("tabindex", "-1");
+    const remoteBtn = $("#playerRemote");
+    if (remoteBtn) remoteBtn.addEventListener("click", enterPlayerFrame);
     setTimeout(focusScopeStart, 400);
   });
 
@@ -695,8 +752,12 @@
       // If the remote is currently "inside" the video, first Back returns to
       // the toolbar (source/episodes/exit); it does NOT quit the video.
       if (frame && document.activeElement === frame) {
-        const back = $("#playerBack");
-        if (back) focusEl(back);
+        const remote = $("#playerRemote");
+        if (remote && isVisible(remote)) focusEl(remote);
+        else {
+          const back = $("#playerBack");
+          if (back) focusEl(back);
+        }
         return true;
       }
       // Already on the toolbar — Back closes the player.

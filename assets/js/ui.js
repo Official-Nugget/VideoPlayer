@@ -153,15 +153,29 @@ const UI = (() => {
   }
 
   // ---------- Modal ----------
+  function syncPageScrollLock() {
+    const locked =
+      ($("#modal") && !$("#modal").hidden) ||
+      ($("#player") && !$("#player").hidden) ||
+      ($("#trailer") && !$("#trailer").hidden);
+    const val = locked ? "hidden" : "";
+    document.body.style.overflow = val;
+    const vp = $("#viewport");
+    if (vp) vp.style.overflow = val;
+    document.documentElement.style.overflow = val;
+  }
   function openModal(html) {
     const modal = $("#modal");
     $("#modalBody").innerHTML = html;
     modal.hidden = false;
-    document.body.style.overflow = "hidden";
+    syncPageScrollLock();
+    if (document.documentElement.classList.contains("tv-mode")) {
+      modal.scrollTop = 0;
+    }
   }
   function closeModal() {
     $("#modal").hidden = true;
-    document.body.style.overflow = "";
+    syncPageScrollLock();
   }
 
   // ---------- Player overlay ----------
@@ -170,7 +184,7 @@ const UI = (() => {
     $("#playerTitle").textContent = title || "";
     player.hidden = false;
     player.classList.remove("chrome-hidden");
-    document.body.style.overflow = "hidden";
+    syncPageScrollLock();
     if (document.documentElement.classList.contains("tv-mode")) {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -257,7 +271,7 @@ const UI = (() => {
     player.hidden = true;
     player.classList.remove("chrome-hidden");
     $("#settingsPop").hidden = true;
-    document.body.style.overflow = "";
+    syncPageScrollLock();
     if (window.desktop?.clearPresence) window.desktop.clearPresence();
   }
 
@@ -282,14 +296,12 @@ const UI = (() => {
     const yt = $("#trailerYT");
     if (yt) yt.href = `https://www.youtube.com/watch?v=${youtubeKey}`;
     $("#trailer").hidden = false;
-    document.body.style.overflow = "hidden";
+    syncPageScrollLock();
   }
   function closeTrailer() {
     $("#trailerFrame").src = "about:blank";
     $("#trailer").hidden = true;
-    if ($("#modal").hidden && $("#player").hidden) {
-      document.body.style.overflow = "";
-    }
+    syncPageScrollLock();
   }
 
   // ---------- Notice ----------
