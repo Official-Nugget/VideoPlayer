@@ -175,6 +175,13 @@ const UI = (() => {
   }
   function setPlayerFrame(url) {
     const frame = $("#playerFrame");
+    frame.setAttribute("allowfullscreen", "");
+    frame.setAttribute("webkitallowfullscreen", "");
+    frame.setAttribute("mozallowfullscreen", "");
+    frame.setAttribute(
+      "allow",
+      "autoplay; fullscreen *; encrypted-media; picture-in-picture"
+    );
     const touch =
       window.matchMedia("(hover: none)").matches ||
       window.matchMedia("(pointer: coarse)").matches;

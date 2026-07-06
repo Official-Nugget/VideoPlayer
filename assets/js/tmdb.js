@@ -91,6 +91,67 @@ const TMDB = (() => {
   const search = (query, page = 1) =>
     request(`/search/multi`, { query, page, include_adult: false });
 
+  const searchMovie = (query, page = 1) =>
+    request(`/search/movie`, { query, page, include_adult: false });
+
+  const searchTv = (query, page = 1) =>
+    request(`/search/tv`, { query, page, include_adult: false });
+
+  function normalizeQuery(query) {
+    return String(query || "")
+      .trim()
+      .replace(/[^\p{L}\p{N}\s']/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function mediaResults(list) {
+    return (list || []).filter(
+      (r) => r.media_type === "movie" || r.media_type === "tv"
+    );
+  }
+
+  function dedupeResults(items) {
+    const seen = new Set();
+    return items.filter((r) => {
+      const key = `${r.media_type || "x"}:${r.id}`;
+      if (!r.id || seen.has(key)) return false;
+      seen.add(key);
+      return r.media_type === "movie" || r.media_type === "tv";
+    });
+  }
+
+  // Broader than /search/multi alone — merges movie + TV endpoints and retries
+  // shorter queries when the first pass returns few hits (helps minor typos).
+  async function smartSearch(query, page = 1) {
+    const q = normalizeQuery(query);
+    if (!q) return { results: [] };
+
+    const [multi, movies, tv] = await Promise.all([
+      search(q, page).catch(() => ({ results: [] })),
+      searchMovie(q, page).catch(() => ({ results: [] })),
+      searchTv(q, page).catch(() => ({ results: [] })),
+    ]);
+
+    let results = dedupeResults([
+      ...mediaResults(multi.results),
+      ...(movies.results || []).map((r) => ({ ...r, media_type: "movie" })),
+      ...(tv.results || []).map((r) => ({ ...r, media_type: "tv" })),
+    ]);
+
+    if (results.length < 4 && q.includes(" ")) {
+      const words = q.split(" ");
+      while (words.length > 1 && results.length < 4) {
+        words.pop();
+        const shorter = words.join(" ");
+        const retry = await search(shorter, 1).catch(() => ({ results: [] }));
+        results = dedupeResults([...results, ...mediaResults(retry.results)]);
+      }
+    }
+
+    return { results };
+  }
+
   return {
     request,
     img,
@@ -106,5 +167,7 @@ const TMDB = (() => {
     details,
     seasonDetails,
     search,
+    smartSearch,
+    normalizeQuery,
   };
 })();

@@ -888,8 +888,9 @@ button {
   cursor: none;
   -webkit-tap-highlight-color: transparent;
 }
-.player:not(.chrome-hidden) .player__pointer-layer {
-  pointer-events: none;
+.player--native-embed .player__pointer-layer {
+  z-index: 1 !important;
+  pointer-events: none !important;
 }
 .player__pointer-layer {
   position: absolute;

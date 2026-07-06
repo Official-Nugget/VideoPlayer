@@ -118,6 +118,7 @@
       $("#playerTitle").textContent = this.displayTitle();
       this.currentUrl = Player.buildUrl(this.ctx);
       UI.setPlayerFrame(this.currentUrl);
+      syncEmbedPlayerMode();
       const castBtn = $("#playerCast");
       if (castBtn) castBtn.hidden = !window.desktop?.openExternal;
     },
@@ -751,10 +752,9 @@
       }
     },
     async filteredSearch(s) {
-      const res = await TMDB.search(this.query.trim());
-      let items = (res.results || []).filter(
-        (r) => r.media_type === "movie" || r.media_type === "tv"
-      );
+      const q = TMDB.normalizeQuery(this.query);
+      const res = await TMDB.smartSearch(q);
+      let items = res.results || [];
       if (s.type !== "all") items = items.filter((r) => r.media_type === s.type);
       if (s.year) {
         items = items.filter((r) =>
@@ -771,6 +771,7 @@
           return gid && (r.genre_ids || []).includes(gid);
         });
       }
+      items = rankSearchResults(items, q);
       return this.sortItems(items, s.sort);
     },
     async discover(s) {
@@ -925,13 +926,45 @@
 
   // ---------- Search ----------
   let searchTimer;
+
+  function rankSearchResults(items, query) {
+    const q = String(query || "").toLowerCase().trim();
+    const words = q.split(/\s+/).filter(Boolean);
+    const score = (item) => {
+      const title = (item.title || item.name || "").toLowerCase();
+      if (!title) return 0;
+      if (title === q) return 1000;
+      if (title.startsWith(q)) return 900;
+      if (title.includes(q)) return 800;
+      const matched = words.filter((w) => title.includes(w)).length;
+      const wordScore = words.length ? (matched / words.length) * 650 : 0;
+      return wordScore + (item.popularity || 0) * 0.02;
+    };
+    return [...items].sort((a, b) => score(b) - score(a));
+  }
+
+  function syncEmbedPlayerMode() {
+    const player = $("#player");
+    if (!player) return;
+    const src = Player.getSource(Player.getSourceId());
+    player.classList.toggle("player--native-embed", !src?.vidlink);
+  }
+
   async function runSearch(query) {
     if (!query || query.trim().length < 2) {
       setActiveNav("home");
       return loadHome();
     }
     await Filters.init();
-    Filters.query = query;
+    // Clear stale browse filters so search isn't over-restricted.
+    $("#fType").value = "all";
+    $("#fGenre").value = "";
+    $("#fYear").value = "";
+    $("#fRating").value = "";
+    $("#fSort").value = "popularity.desc";
+    Filters.populateGenres();
+    Filters.query = query.trim();
+    setActiveNav("browse");
     Filters.apply();
   }
 
@@ -1021,7 +1054,13 @@
 
       const scheduleHide = () => {
         clearTimeout(hideTimer);
-        if (isTv() || overBar || player.hidden) return;
+        if (
+          isTv() ||
+          overBar ||
+          player.hidden ||
+          player.classList.contains("player--native-embed")
+        )
+          return;
         hideTimer = setTimeout(() => {
           player.classList.add("chrome-hidden");
         }, HIDE_MS);
@@ -1082,6 +1121,7 @@
     // Player: source picker
     $("#sourceSelect").addEventListener("change", (e) => {
       Player.setSourceId(e.target.value);
+      syncEmbedPlayerMode();
       Playback.reload();
     });
 

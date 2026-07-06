@@ -63,6 +63,22 @@ function createWindow() {
   mainWindow.on("maximize", sendMaxState);
   mainWindow.on("unmaximize", sendMaxState);
 
+  // Allow HTML5 fullscreen from stream embeds (VidSrc, 2Embed, etc.).
+  const wireEmbedFullscreen = (contents) => {
+    contents.on("enter-html-full-screen", () => {
+      const win = BrowserWindow.fromWebContents(contents);
+      if (win && !win.isDestroyed()) win.setFullScreen(true);
+    });
+    contents.on("leave-html-full-screen", () => {
+      const win = BrowserWindow.fromWebContents(contents);
+      if (win && !win.isDestroyed() && win.isFullScreen()) win.setFullScreen(false);
+    });
+  };
+  wireEmbedFullscreen(mainWindow.webContents);
+  app.on("web-contents-created", (_e, contents) => {
+    wireEmbedFullscreen(contents);
+  });
+
   // Block ad hosts, popups, and redirect hijacks (see electron/adblock.js).
   adblock.install(app, mainWindow, appOrigin);
 
