@@ -38,7 +38,6 @@
 
   const FOCUSABLE = [
     "a[data-nav]",
-    ".logo",
     "#searchInput",
     "#playerFrame",
     ".card",
@@ -99,25 +98,225 @@
     if (r.width <= 0 || r.height <= 0) return false;
     const st = getComputedStyle(el);
     if (st.visibility === "hidden" || st.display === "none") return false;
-    // Must be (mostly) within the viewport bounds vertically to be reachable.
-    if (r.bottom < -5 || r.top > window.innerHeight + 5) {
-      // still allow — we may scroll to it — but skip fully off-screen rows far away
-    }
+    if (el.closest("[hidden]")) return false;
     return true;
   }
 
-  function focusables(scope) {
-    const list = Array.from(scope.querySelectorAll(FOCUSABLE)).filter(isVisible);
-    // Ensure every candidate can hold focus and show a focus ring.
+  function inHeaderZone(el) {
+    return !!(el && el.closest && el.closest("#header"));
+  }
+
+  function inContentZone(el) {
+    return !!(el && el.closest && el.closest("#viewport"));
+  }
+
+  function isChromeNav(el) {
+    return inHeaderZone(el) || !!(el && el.closest && el.closest(".mobnav"));
+  }
+
+  function nearestCardByX(track, refCard) {
+    if (!track) return null;
+    const cards = cardsInRow(track);
+    if (!cards.length) return null;
+    const x = centerOf(refCard).x;
+    let best = cards[0];
+    let bestDist = Infinity;
+    for (const c of cards) {
+      const d = Math.abs(centerOf(c).x - x);
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  function rowCardSibling(cur, dir) {
+    const row = cur.closest(".row");
+    if (!row) return null;
+    const rowsEl = $("#rows");
+    if (!rowsEl) return null;
+    const rows = Array.from(rowsEl.children).filter(
+      (r) => r.classList.contains("row") && isVisible(r)
+    );
+    const idx = rows.indexOf(row);
+    if (idx < 0) return null;
+
+    if (dir === "up") {
+      if (idx === 0) {
+        const hero = $("#hero");
+        if (hero && !hero.hidden) return $("#heroPlay") || $("#heroInfo");
+        return null;
+      }
+      return nearestCardByX(rows[idx - 1].querySelector(".row__track"), cur);
+    }
+    if (dir === "down" && idx < rows.length - 1) {
+      return nearestCardByX(rows[idx + 1].querySelector(".row__track"), cur);
+    }
+    return null;
+  }
+
+  function gridCardSibling(cur, dir) {
+    const grid = cur.closest(".grid");
+    if (!grid) return null;
+    const cards = Array.from(grid.querySelectorAll(".card")).filter(isVisible);
+    const curC = centerOf(cur);
+    let best = null;
+    let bestScore = Infinity;
+    for (const c of cards) {
+      if (c === cur) continue;
+      const p = centerOf(c);
+      const dy = p.y - curC.y;
+      if (dir === "up" && dy >= -2) continue;
+      if (dir === "down" && dy <= 2) continue;
+      const score = Math.abs(dy) + Math.abs(p.x - curC.x) * 2.5;
+      if (score < bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  function heroSibling(cur, dir) {
+    const play = $("#heroPlay");
+    const info = $("#heroInfo");
+    if (cur === play && dir === "right" && info && isVisible(info)) return info;
+    if (cur === info && dir === "left" && play && isVisible(play)) return play;
+    return null;
+  }
+
+  function headerDownTarget() {
+    const hero = $("#hero");
+    if (hero && !hero.hidden) {
+      const play = $("#heroPlay");
+      if (play && isVisible(play)) return play;
+    }
+    const gridView = $("#gridView");
+    if (gridView && !gridView.hidden) {
+      const card = gridView.querySelector(".grid .card");
+      if (card && isVisible(card)) return card;
+      const filter = $("#fType");
+      if (filter && isVisible(filter)) return filter;
+    }
+    const card = $("#rows .card");
+    if (card && isVisible(card)) return card;
+    return null;
+  }
+
+  function navCandidates(scope, cur, dir) {
+    let list = Array.from(scope.querySelectorAll(FOCUSABLE)).filter(isVisible);
     for (const el of list) {
       if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
     }
-    return list;
+
+    if (scope !== document.body) return list;
+
+    if (inHeaderZone(cur)) {
+      return list.filter((el) => isChromeNav(el) && !el.classList.contains("logo"));
+    }
+
+    if (inContentZone(cur)) {
+      list = list.filter((el) => !isChromeNav(el));
+      if (cur.classList.contains("card") && (dir === "up" || dir === "down")) {
+        list = list.filter((el) => !el.classList.contains("row__action"));
+      }
+      return list;
+    }
+
+    return list.filter((el) => !isChromeNav(el));
+  }
+
+  function firstContentFocus(scope) {
+    const hero = $("#hero");
+    if (scope === document.body && hero && !hero.hidden) {
+      const play = $("#heroPlay");
+      if (play && isVisible(play)) return play;
+    }
+    const gridView = $("#gridView");
+    if (scope === document.body && gridView && !gridView.hidden) {
+      const card = gridView.querySelector(".grid .card");
+      if (card && isVisible(card)) return card;
+    }
+    const card = scope.querySelector(".card");
+    if (card && isVisible(card)) return card;
+    const items = navCandidates(scope, null, "down");
+    return items[0] || null;
   }
 
   function centerOf(el) {
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2, r };
+  }
+
+  function rowTrackOf(el) {
+    return el && el.closest ? el.closest(".row__track") : null;
+  }
+
+  function cardsInRow(track) {
+    return Array.from(track.querySelectorAll(".card")).filter(isVisible);
+  }
+
+  // Left/right within a row should step poster-to-poster, not jump via spatial math.
+  function siblingCard(cur, dir) {
+    const track = rowTrackOf(cur);
+    if (!track || !cur.classList.contains("card")) return null;
+    const cards = cardsInRow(track);
+    const i = cards.indexOf(cur);
+    if (i < 0) return null;
+    if (dir === "right" && i < cards.length - 1) return cards[i + 1];
+    if (dir === "left" && i > 0) return cards[i - 1];
+    return null;
+  }
+
+  // Fire TV WebViews mishandle scrollIntoView on overflow-x rows — scroll the track
+  // ourselves so posters slide while focus stays on screen.
+  function scrollCardInRow(card) {
+    const track = rowTrackOf(card);
+    if (!track) return false;
+
+    const pad = 20;
+    const trackRect = track.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    let next = track.scrollLeft;
+
+    if (cardRect.right > trackRect.right - pad) {
+      next += cardRect.right - trackRect.right + pad;
+    } else if (cardRect.left < trackRect.left + pad) {
+      next -= trackRect.left + pad - cardRect.left;
+    } else {
+      return true;
+    }
+
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    track.scrollLeft = Math.max(0, Math.min(max, next));
+    return true;
+  }
+
+  function scrollVerticallyTo(el) {
+    const marginTop = 88;
+    const marginBottom = 40;
+    const rect = el.getBoundingClientRect();
+    const viewport =
+      document.querySelector(".is-electron .viewport") || $("#viewport");
+
+    if (viewport && viewport.scrollHeight > viewport.clientHeight + 2) {
+      const vRect = viewport.getBoundingClientRect();
+      const relTop = rect.top - vRect.top;
+      const relBottom = rect.bottom - vRect.top;
+      if (relTop < marginTop) {
+        viewport.scrollTop += relTop - marginTop;
+      } else if (relBottom > viewport.clientHeight - marginBottom) {
+        viewport.scrollTop += relBottom - (viewport.clientHeight - marginBottom);
+      }
+      return;
+    }
+
+    if (rect.top < marginTop) {
+      window.scrollBy(0, rect.top - marginTop);
+    } else if (rect.bottom > window.innerHeight - marginBottom) {
+      window.scrollBy(0, rect.bottom - window.innerHeight + marginBottom);
+    }
   }
 
   // Show the player toolbar only when a toolbar control is focused; otherwise
@@ -136,32 +335,92 @@
     } catch (e) {
       el.focus();
     }
-    // Center it in both axes (handles nested horizontal row scrollers).
-    try {
-      el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
-    } catch (e) {
-      el.scrollIntoView();
+    if (el.classList.contains("card") && rowTrackOf(el)) {
+      scrollCardInRow(el);
+      scrollVerticallyTo(el);
+    } else {
+      scrollVerticallyTo(el);
     }
     updatePlayerChrome(el);
   }
 
   function move(dir) {
     const scope = activeScope();
-    const items = focusables(scope);
+    const cur = document.activeElement;
+    const items = navCandidates(scope, cur, dir);
     if (!items.length) return;
 
-    const cur = document.activeElement;
-    if (!cur || !items.includes(cur)) {
-      focusEl(items[0]);
+    if (!cur || cur === document.body || !items.includes(cur)) {
+      focusEl(firstContentFocus(scope));
       return;
+    }
+
+    // Header chrome: down always returns to the main content, never traps in the logo.
+    if (inHeaderZone(cur) && dir === "down") {
+      const target = headerDownTarget();
+      if (target) {
+        focusEl(target);
+        return;
+      }
+    }
+
+    // Content: up from hero opens account (not the logo); up from rows steps row-to-row.
+    if (inContentZone(cur)) {
+      if (dir === "up" && (cur === $("#heroPlay") || cur === $("#heroInfo"))) {
+        const account = $("#accountBtn");
+        if (account && isVisible(account)) {
+          focusEl(account);
+          return;
+        }
+        return;
+      }
+      if (dir === "left" || dir === "right") {
+        const heroNext = heroSibling(cur, dir);
+        if (heroNext) {
+          focusEl(heroNext);
+          return;
+        }
+        if (cur.classList.contains("card")) {
+          const next = siblingCard(cur, dir);
+          if (next) {
+            focusEl(next);
+            return;
+          }
+        }
+      }
+      if (dir === "up" || dir === "down") {
+        if (cur.classList.contains("card")) {
+          const rowNext = rowCardSibling(cur, dir);
+          if (rowNext) {
+            focusEl(rowNext);
+            return;
+          }
+          const gridNext = gridCardSibling(cur, dir);
+          if (gridNext) {
+            focusEl(gridNext);
+            return;
+          }
+        }
+        const grid = $("#gridView");
+        if (grid && !grid.hidden && cur.closest("#filters") && dir === "down") {
+          const card = grid.querySelector(".grid .card");
+          if (card && isVisible(card)) {
+            focusEl(card);
+            return;
+          }
+        }
+      }
     }
 
     const c = centerOf(cur);
     let best = null;
     let bestScore = Infinity;
+    const rowBias =
+      cur.classList.contains("card") && (dir === "left" || dir === "right") ? 4 : 2.2;
 
     for (const el of items) {
       if (el === cur) continue;
+      if (el.classList.contains("logo")) continue;
       const p = centerOf(el);
       const dx = p.x - c.x;
       const dy = p.y - c.y;
@@ -189,8 +448,7 @@
           break;
       }
       if (!inDir) continue;
-      // Weight the cross-axis so moving stays on the same row/column.
-      const score = primary + cross * 2.2;
+      const score = primary + cross * rowBias;
       if (score < bestScore) {
         bestScore = score;
         best = el;
@@ -287,8 +545,7 @@
 
   // ---- Initial + overlay focus management ----
   function firstIn(scope) {
-    const items = focusables(scope);
-    return items[0] || null;
+    return firstContentFocus(scope);
   }
 
   // Focus the video iframe so the remote's keys are delivered to the streaming
@@ -397,6 +654,8 @@
   });
 
   window.addEventListener("load", () => {
+    const logo = document.querySelector(".logo");
+    if (logo) logo.setAttribute("tabindex", "-1");
     setTimeout(focusScopeStart, 400);
   });
 

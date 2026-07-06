@@ -1508,10 +1508,11 @@ input:focus-visible {
    (including revealing the title overlay). */
 .tv-mode .card:focus {
   outline: none;
-  transform: scale(1.12);
+  transform: scale(1.08);
   z-index: 5;
   box-shadow: 0 0 0 4px var(--accent), 0 16px 40px rgba(0, 0, 0, 0.6);
   border-radius: 8px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .tv-mode .card:focus .card__overlay {
   opacity: 1;
@@ -1531,6 +1532,9 @@ input:focus-visible {
    hide them; the remote scrolls rows by moving between posters. */
 .tv-mode .row__arrow {
   display: none !important;
+}
+.tv-mode .row__track {
+  scroll-behavior: auto;
 }
 /* The floating/auto-hiding toolbar is now shared base behaviour (see
    .player__bar / .player.chrome-hidden). On Fire TV it's revealed by the
@@ -1579,9 +1583,20 @@ html.tv-mode:has(#player:not([hidden])) body {
   outline: none;
 }
 /* Nav + header links get a filled pill when focused. */
-.tv-mode .nav a:focus,
+.tv-mode .logo {
+  pointer-events: none;
+}
 .tv-mode .logo:focus {
+  outline: none;
+  background: none;
+}
+.tv-mode .nav a:focus {
   background: rgba(255, 159, 28, 0.18);
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.tv-mode .account__btn:focus {
   outline: 3px solid var(--accent);
   outline-offset: 4px;
   border-radius: 8px;
